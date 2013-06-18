@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>System Usability Scale</title>
+	<script type='text/javascript' src='//code.jquery.com/jquery-1.9.1.js'></script>
+	<script type='text/javascript' src='js/jquery-1.8.3.js'></script>
+	<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+	<link href="css/bootstrap-responsive.min.css" rel="stylesheet" type="text/css"/>
+	<link href="css/blue-glass/sidebar.css" rel="stylesheet" type="text/css"/>
+	<style type='text/css'>
+		body {
+			font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
+			color: #274b6d;
+			padding-top: 25px;
+		}
+
+		.hero-unit {
+			padding: 10px 30px;
+			margin-bottom: 20px;
+		}
+
+		.form-horizontal .control-group {
+			margin-bottom: 10px;
+		}
+
+		.table {
+			margin-bottom: 0px;
+		}
+
+		.table-condensed td {
+			padding: 0px 3px;
+			line-height: 15px;
+			opacity: 1;
+			background-color: #FFFFFF;
+		}
+
+		#dataTable {
+			position:absolute;
+			left:0px;
+			top:0px;
+			font-size:9px;
+			border: 1px solid #999999;
+			border-radius: 5px;
+		}
+		
+		label, input, button, select, textarea {
+			font-size: 12px;
+		}
+		
+		h1, h2, h3, h4, h5, h6 {
+			text-align: center;
+		}
+		
+		#filterBar {
+			padding: 0px;
+			margin: 0px;
+			font-size: 10pt;
+			font-weight: normal;
+		}
+		
+		div.sidebar-body {
+			margin: 10px;
+		}
+		
+		div.sidebar-container.left {
+			padding-left:20px;
+		}
+		
+		ul.sidebar-menu li {
+			cursor: pointer;
+		}
+		
+		.label, .badge {
+			font-weight: normal;
+			font-size: 11px;
+			margin-bottom: 4px;
+			display: block;
+		}
+	
+		div.sidebar-container {
+			background-color: #FFFFFF;
+			box-shadow: 0px 0px 15px #777777
+		}
+	</style>
+	<script type='text/javascript'>
+
+		var FILL_COLOR = "#F0F0E0";
+		var MEDIAN_COLOR = "#AC5D15";
+		var WHISKERLENGTH = 42; //in percentage
+		var STEM_COLOR = "#040404";
+		var BORDER_COLOR = "#444444";
+		var WHISKER_COLOR = "#777777";
+
+		var tableItems = ["category","min","max"];
+
+		var jsonData = {
+			tabularData: [
+				["","Mean AN","SD AN","Mean DI","SD DI","p"],
+				["Usability","25.3","4.5","30.2","5.5",0.2],
+				["Learnability","20.2","3.5","19.2","3.1",0.1],
+				["SUS","27.3","3.3","27.2","3.5",0.2]
+			],
+			data: [
+						{
+							category : 'Overall Experience AN',
+							categoryGroup: 'Overall Experience',
+							data : [3.1,3.6,4.2]
+						},
+						{
+							category : 'Overall Experience DI',
+							categoryGroup: 'Overall Experience',
+							data : [4.48,5.11,5.68]
+						},
+						{
+							category : 'Arrange Point AN',
+							categoryGroup: 'Arrange Point',
+							data : [4.1,4.6,5.2]
+						},
+						{
+							category : 'Arrange Point DI',
+							categoryGroup: 'Arrange Point',
+							data : [3.6,4.2,4.8]
+						},
+						{
+							category : 'Usability AN',
+							categoryGroup: 'Usability',
+							data : [4.1,4.6,5.2]
+						},
+						{
+							category : 'Usability DI',
+							categoryGroup: 'Usability',
+							data : [3.6,4.2,4.8]
+						},
+						{
+							category : 'Perception AN',
+							categoryGroup: 'Perception',
+							data : [4.1,4.6,5.2]
+						},
+						{
+							category : 'Perception DI',
+							categoryGroup: 'Perception',
+							data : [3.6,4.2,4.8]
+						}
+					]
+		}
+
+		//variable to hold the chart's handle
+		var myChart = null;
+		var chartHandle = null;
+
+		//function to change the filter panels dynamically based on the json data
+		function initializeFilterPanel() {
+			var distinctCategories = {};
+			for (var i = 0; i < jsonData.data.length; i++){
+				var dataMap = jsonData.data[i];
+				var categoryGroup = dataMap["categoryGroup"];
+				distinctCategories[categoryGroup] = 1;
+			}
+
+			//create the filter checkboxes as per the categories
+			for (var key in distinctCategories) {
+				//$("#filterDiv").append('<label class="checkbox"><input type="checkbox" id="group_1" class="filterCheckBox" value="' + key + '" checked>' + key + '</label>');
+				$("#filterBar").append('<li class="categoryFilter label label-success active">' + key + '</li>');
+			}
+		}
+
+		//Function to remove table from the plot
+		function removeTableFromPlot() {
+			$("#dataTable").remove();
+		}
+
+		//Function to draw table in the plot
+		function drawTableInPlot() {
+
+			//remove existing table and draw the table
+			removeTableFromPlot()
+
+			var tableStr = '<div id="dataTable">';
+			tableStr += '<table class="table table-hover table-condensed">';
+
+			for (var i = 0; i < jsonData.tabularData.length; i++){
+				tableStr += "<tr>";
+				var dataArray = jsonData.tabularData[i];
+				for (var j = 0; j < dataArray.length; j++)
+					tableStr += "<td>" + dataArray[j] + "</td>";
+					tableStr += "</tr>";
+			}
+
+			tableStr += "</table></div>";
+			$("svg").parent().append(tableStr);
+			$("div.highcharts-tooltip > span").css({'opacity':1, 'background-color':"#FFFFFF","z-index":100});
+		}
+
+		//Function to remove the numbers in plot
+		function removeNumbersFromPlot() {
+			$("text.plotNumbers").remove();
+		}
+
+		//Function to plot the numbers in the plot
+		function drawNumbersInPlot() {
+
+			//remove the earlier plotted numbers
+			removeNumbersFromPlot();
+
+			//Find the distance between the plots in the series
+			var distanceBetweenPlots = 0;
+			var boxWidth = 0;
+
+			if (myChart.series == null || myChart.series.length == 0)
+				return;
+			
+			//find the box's width
+			boxWidth = (myChart.series[0].data[0].pointWidth * WHISKERLENGTH / 100 );
+			boxWidth = boxWidth + boxWidth * (100 - WHISKERLENGTH)/(100) + 2;
+
+			var spaceForCharacter = 6; //in pixel
+			if ((myChart.series.length > 1) && (myChart.series[0].data.length >= 1))	{
+				distanceBetweenPlots = myChart.series[1].data[0].barX - myChart.series[0].data[0].barX;
+			}
+
+			for (var i = 0; i < myChart.series.length; i++)
+			{
+				//show numbers only if the series is visible
+				if (!myChart.series[i].visible)
+					continue;
+
+				for (var j = 0; j < myChart.series[i].data.length; j++)
+				{
+					//series color
+					var seriesColor = myChart.series[i].color;
+					var textColor = myChart.series[0].color.substring(1);
+					textColor = "#" + (new Hex(seriesColor)).brightness(-40);
+
+					var dataLength = 0;
+					var dataSpaceReq = 0;
+
+					// series-1 contains the mox & min values
+					if (i == 0)
+					{
+						//add max value in the plot
+						var maxValue = myChart.series[i].data[j].high;
+						dataLength = ("" + maxValue).length;
+						dataSpaceReq = (dataLength * spaceForCharacter);
+						
+						//find the y-axis corresponding to the value
+						pointY = 0;
+						if (myChart.yAxis[0].toValue(pointY) > maxValue)
+							while (myChart.yAxis[0].toValue(pointY) >= maxValue && !myChart.yAxis[0].toValue(pointY+3) < maxValue)
+								pointY+=2;
+						else
+							while (myChart.yAxis[0].toValue(pointY) <= maxValue && !myChart.yAxis[0].toValue(pointY+3) > maxValue)
+								pointY+=2;
+
+						//plot the point
+						myChart.renderer.text("" + maxValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+
+						//add min value in the plot
+						var minValue = myChart.series[i].data[j].low;
+						dataLength = ("" + minValue).length;
+						dataSpaceReq = (dataLength * spaceForCharacter);
+
+						//find the y-axis corresponding to the value
+						pointY = 0;
+						if (myChart.yAxis[0].toValue(pointY) > minValue)
+							while (myChart.yAxis[0].toValue(pointY) >= minValue && !myChart.yAxis[0].toValue(pointY+3) < minValue)
+								pointY+=2;
+						else
+							while (myChart.yAxis[0].toValue(pointY) <= minValue && !myChart.yAxis[0].toValue(pointY+3) > minValue)
+								pointY+=2;
+
+						//plot the point
+						myChart.renderer.text("" + minValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+					}
+					
+					//second series contains the median/mean
+					if (i == 1)
+					{
+						//add median value in the plot
+						var medianValue = myChart.series[i].data[j].y;
+						dataLength = ("" + medianValue).length;
+						dataSpaceReq = (dataLength * spaceForCharacter);
+
+						//find the y-axis corresponding to the value
+						pointY = 0;
+						if (myChart.yAxis[0].toValue(pointY) > medianValue)
+							while (myChart.yAxis[0].toValue(pointY) >= medianValue && !myChart.yAxis[0].toValue(pointY+3) < medianValue)
+								pointY+=2;
+						else
+							while (myChart.yAxis[0].toValue(pointY) <= medianValue && !myChart.yAxis[0].toValue(pointY+3) > medianValue)
+								pointY+=2;
+
+						//plot the point
+						myChart.renderer.text("" + medianValue, myChart.plotLeft + myChart.series[0].data[j].barX + (boxWidth/2) - dataSpaceReq, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+					}
+				}
+			}
+		}
+
+		//function to draw the plot based on the filter conditions
+		function drawPlot() {
+
+			//destroy the existing chart if any
+			if (chartHandle != null)
+				chartHandle.destroy();
+
+			var selectedGroups = [];
+			var index = 0;
+			$("li.categoryFilter.active").each(function(){
+						selectedGroups[index] = $(this).html();
+						index++;
+					});
+
+			var filteredCategories = selectedGroups;
+			var xAxisCategories = [];
+			var dataGroups = {};
+
+			for (var j = 0; j < filteredCategories.length; j++){
+
+				for (var i = 0; i < jsonData.data.length; i++){
+					var dataMap = jsonData.data[i];
+					var category = dataMap["categoryGroup"];
+
+					if (filteredCategories[j] == category) {
+						var dataGroup = dataMap["category"];
+						xAxisCategories.push(dataMap["category"]);
+						dataGroups[dataGroup] = dataMap["data"];
+					}
+				}
+			}
+			//alert(dataGroups);
+
+			var filteredSeries = [];
+			var filteredSeriesMean = [];
+			for (var key in dataGroups) {
+				var tempData = dataGroups[key];
+				var myArray = [];
+				myArray.push(tempData[0]);
+				myArray.push(tempData[2]);
+				filteredSeries.push(myArray);
+				filteredSeriesMean.push(tempData[1]);
+			}
+
+			chartHandle = new Highcharts.Chart({
+
+		        chart: {
+			        renderTo:$('#plotContainer')[0],
+					marginTop: 70,
+					marginLeft: 160
+			    },
+
+			    title:{
+			        text:''
+			    },
+
+				tooltip: {
+					useHTML: true
+				},
+				
+				scrollbar: {
+			        enabled: true
+			    },
+				
+				exporting: {
+					buttons: {
+						tableButton: {
+							x: -32,
+							_titleKey: 'tableButtonTitle',
+							symbol: 'url(img/table.png)',
+							onclick: function () {
+								if ($('g.tableButtonClass').attr("state") == "disabled") {
+									drawTableInPlot();
+									$('g.tableButtonClass').attr("state","enabled");
+								}
+								else {
+									removeTableFromPlot();
+									$('g.tableButtonClass').attr("state", "disabled");
+								}
+							},
+							theme: {
+								'class': "tableButtonClass",
+							}
+						},
+						
+						numericButton: {
+							x: -60,
+							_titleKey: 'numericButtonTitle',
+							height: 20,
+							width: 24,
+							symbol: 'url(img/numbers.png)',
+							onclick: function () {
+								if ($('g.numericButtonClass').attr("state") == "disabled") {
+									drawNumbersInPlot();
+									$('g.numericButtonClass').attr("state","enabled");
+								}
+								else {
+									removeNumbersFromPlot();
+									$('g.numericButtonClass').attr("state", "disabled");
+								}
+							},
+							theme: {
+								'class': "numericButtonClass",
+							}
+						}
+					}
+				},
+				
+			    legend:{
+					enabled: false
+			    },
+
+			    plotOptions: {
+					errorbar: {
+						stemWidth: 1.2,
+						whiskerWidth: 1,
+						whiskerLength: "30%"
+					}
+			    },
+
+				colors: [
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FF5E42', 
+					'#51B0FF'
+				],
+
+			    xAxis:{
+			        lineWidth:1,
+			        tickLength:3,
+			        title:{
+			            text:''
+			        },
+					categories: xAxisCategories
+			    },
+
+			    yAxis:{
+			        lineColor:'#999',
+			        lineWidth:1,
+			        tickColor:'#666',
+			        tickWidth:1,
+			        tickLength:3,
+			        gridLineColor:'#ddd',
+			        title:{
+			            text:'Mean with 95% CI'
+			        }
+			    },
+
+			    series: [{
+			        type: 'errorbar',
+					colorByPoint: true,
+					data: filteredSeries
+			    },
+				{
+		            type: 'scatter',
+					data: filteredSeriesMean,
+		            /*data: [3.6, 5.11],*/
+			        marker: {
+			            symbol: 'triangle',
+						radius: 7
+			        }
+		        }]
+		    },
+
+			function(chart) { // on complete
+
+					myChart = chart;
+
+					/*
+					* All adjustments on top of highcharts
+					*/
+					//change the color of triangle in error-bar to be in line with the line
+					var items = $("g.highcharts-series.highcharts-tracker").find("path[stroke-width='1.2']");
+					var triangles = $("g.highcharts-markers.highcharts-tracker").find("path");
+					for (var i = 0; i < items.length; i++) {
+						var clone = $(triangles[items.length - i - 1]).clone(false).appendTo("g.highcharts-series.highcharts-tracker");
+						$(clone).attr("fill", $(items[i]).attr("stroke"));
+						$(triangles[items.length - i - 1]).remove();
+					}
+
+					//create tabular data and append it to the plot
+					drawTableInPlot();
+
+					//Adding numbers in the plot
+					drawNumbersInPlot();
+				}
+			);
+		}
+
+		$(document).ready(function(){
+
+				//Initialize the filters in the panel
+				initializeFilterPanel();
+
+				//set the titles for the additional buttons
+				Highcharts.setOptions({
+				    lang: {
+				        numericButtonTitle: "Add/Remove Labels",
+						tableButtonTitle: "Add/Remove Table"
+				    }
+				});
+
+				//Create the chart based on the filters
+				$(".filterCheckBox").bind('click', function () {
+					drawPlot();
+				});
+
+				//draw the plot by default
+				drawPlot();
+				
+				//for filter panel
+				$("ul#filterBar").sidebar({
+					root: $("#filterInclude"),
+					open:"click",
+					width: 175
+				});
+				
+				$("li.categoryFilter").bind('click', function () {
+					if ($(this).hasClass("active"))
+						$(this).addClass("inactive").removeClass("active").removeClass("label-success");
+					else
+						$(this).addClass("active").addClass("label-success").removeClass("inactive");
+					drawPlot();
+				});
+			}
+		);
+</script>
+
+</head>
+<body>
+	<script src="js/jquery-ui.min.js"></script>
+	<script src="js/highcharts.js"></script>
+	<script src="js/highcharts-more.js"></script>
+	<script src="js/exporting.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/colorutils.min.js"></script>
+	<script src="js/jquery.sidebar.min.js"></script>
+	<div id="container" class="container">
+		<div class="row">
+			<div class="span12"><h3>Comparison of Mean between: variable, variable and variables</h3></div>
+		</div>
+
+		<div class="row">
+			<!--<div class="span1 hero-unit" style="margin-top:20px">
+				<div class="filterHeader" style="margin-bottom:10px;">Filter Panel</div>
+				<form class="form-vertical">
+					<div id="filterDiv" class="control-group">
+					</div>
+				</form>
+			</div>-->
+			<div id="filterInclude" class="span11" style="height:500px;">
+				<ul id="filterBar">
+				</ul>
+				<div id="plotContainer" style="height: 500px; margin: auto; min-width: 600px;">
+				</div>
+			</div>
+		</div>
+	</div>
+ </body>
+</html>
+

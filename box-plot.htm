@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>System Usability Scale</title>
+	<script type='text/javascript' src='//code.jquery.com/jquery-1.9.1.js'></script>
+	<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+	<link href="css/bootstrap-responsive.min.css" rel="stylesheet" type="text/css"/>
+	<style type='text/css'>
+		body {
+			font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
+			color: #274b6d;
+			padding-top: 25px;
+		}
+		
+		.hero-unit {
+			padding: 10px 30px;
+			margin-bottom: 20px;
+		}
+		
+		.form-horizontal .control-group {
+			margin-bottom: 10px;
+		}
+		
+		.table {
+			margin-bottom: 0px;
+		}
+		
+		.table-condensed td {
+			padding: 0px 3px;
+			line-height: 15px;
+			opacity: 1;
+			background-color: #FFFFFF;
+		}
+		
+		#dataTable {
+			position:absolute;
+			left:60px;
+			top:60px;
+			font-size:9px;
+			border: 1px solid #999999;
+			border-radius: 5px;
+		}
+	</style>
+	<script type='text/javascript' src='box-plot-json.js'></script>
+	<script type='text/javascript'>
+
+		var FILL_COLOR = "#F0F0E0";
+		var MEDIAN_COLOR = "#020202";
+		var STEM_COLOR = "#040404";
+		var BORDER_COLOR = "#444444";
+		var WHISKER_COLOR = "#777777";
+	
+		//variable to hold the chart's handle
+		var myChart = null;
+		var chartHandle = null;
+		
+		//function to change the filter panels dynamically based on the json data
+		function initializeFilterPanel() {
+			var distinctCategories = {};
+			for (var i = 0; i < jsonData.data.length; i++){
+				var dataMap = jsonData.data[i];
+				var categoryGroup = dataMap["categoryGroup"];
+				distinctCategories[categoryGroup] = 1;
+			}
+			
+			//create the filter checkboxes as per the categories
+			for (var key in distinctCategories) {
+				$("#filterDiv").append('<label class="checkbox inline"><input type="checkbox" id="group_1" class="filterCheckBox" value="' + key + '" checked>' + key + '</label>');
+			}
+		}
+		
+		//Function to remove table from the plot
+		function removeTableFromPlot() {
+			$("#dataTable").remove();
+		}
+		
+		//Function to draw table in the plot
+		function drawTableInPlot() {
+		
+			//remove existing table and draw the table
+			removeTableFromPlot() 
+		
+			var tableStr = '<div id="dataTable">';
+			tableStr += '<table class="table table-hover table-condensed">';
+
+			for (var i = 0; i < jsonData.tabularData.length; i++){
+				tableStr += "<tr>";
+				var dataArray = jsonData.tabularData[i];
+				for (var j = 0; j < dataArray.length; j++)
+					tableStr += "<td>" + dataArray[j] + "</td>";
+					tableStr += "</tr>";
+			}
+			
+			tableStr += "</table></div>";
+			$("div.highcharts-legend").parent().append(tableStr);
+			$("div.highcharts-tooltip > span").css({'opacity':1, 'background-color':"#FFFFFF","z-index":100});
+		}
+		
+		//Function to remove the numbers in plot
+		function removeNumbersFromPlot() {
+			$("text.plotNumbers").remove();
+		}
+		
+		//Function to plot the numbers in the plot
+		function drawNumbersInPlot() {
+		
+			//remove the earlier plotted numbers
+			removeNumbersFromPlot();
+			
+			//Find the distance between the plots in the series
+			var distanceBetweenPlots = 0;
+			var boxWidth = 0;
+			var spaceForCharacter = 6; //in pixel
+			if ((myChart.series.length > 1) && (myChart.series[0].data.length >= 1))	{
+				distanceBetweenPlots = myChart.series[1].data[0].barX - myChart.series[0].data[0].barX;
+			}
+			
+			for (var i = 0; i < myChart.series.length; i++)
+			{
+				//show numbers only if the series is visible
+				if (!myChart.series[i].visible)
+					continue;
+				
+				for (var j = 0; j < myChart.series[i].data.length; j++)
+				{
+					//series color
+					var seriesColor = myChart.series[i].color;
+					var textColor = myChart.series[0].color.substring(1);
+					textColor = "#" + (new Hex(seriesColor)).brightness(-40);
+					
+					//find the box's width
+					boxWidth = myChart.series[i].data[j].pointWidth + 2;
+					
+					//add q1 value in the plot (should be plotted on left side)
+					var q1Value = myChart.series[i].data[j].q1;
+					var dataLength = ("" + q1Value).length;
+					var dataSpaceReq = (dataLength * spaceForCharacter) + 4;
+					
+					//find the y-axis corresponding to the value
+					var pointY = 0;
+					if (myChart.yAxis[0].toValue(pointY) > q1Value)
+						while (myChart.yAxis[0].toValue(pointY) > q1Value && !myChart.yAxis[0].toValue(pointY+3) < q1Value)
+							pointY+=2;
+					else
+						while (myChart.yAxis[0].toValue(pointY) < q1Value && !myChart.yAxis[0].toValue(pointY+3) > q1Value)
+							pointY+=2;
+					
+					//plot the point
+					myChart.renderer.text("" + q1Value, myChart.plotLeft + myChart.series[i].data[j].barX - dataSpaceReq, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+					
+					//add q3 value in the plot (should be plotted on left side)
+					var q3Value = myChart.series[i].data[j].q3;
+					dataLength = ("" + q3Value).length;
+					dataSpaceReq = (dataLength * spaceForCharacter) + 4;
+					
+					//find the y-axis corresponding to the value
+					pointY = 0;
+					if (myChart.yAxis[0].toValue(pointY) > q3Value)
+						while (myChart.yAxis[0].toValue(pointY) >= q3Value && !myChart.yAxis[0].toValue(pointY+3) < q3Value)
+							pointY+=2;
+					else
+						while (myChart.yAxis[0].toValue(pointY) <= q3Value && !myChart.yAxis[0].toValue(pointY+3) > q3Value)
+							pointY+=2;
+					
+					//plot the point
+					myChart.renderer.text("" + q3Value, myChart.plotLeft + myChart.series[i].data[j].barX - dataSpaceReq, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+					
+					//add max value in the plot
+					var maxValue = myChart.series[i].data[j].high;
+					dataLength = ("" + maxValue).length;
+					dataSpaceReq = (dataLength * spaceForCharacter);
+					
+					//find the y-axis corresponding to the value
+					pointY = 0;
+					if (myChart.yAxis[0].toValue(pointY) > maxValue)
+						while (myChart.yAxis[0].toValue(pointY) >= maxValue && !myChart.yAxis[0].toValue(pointY+3) < maxValue)
+							pointY+=2;
+					else
+						while (myChart.yAxis[0].toValue(pointY) <= maxValue && !myChart.yAxis[0].toValue(pointY+3) > maxValue)
+							pointY+=2;
+					
+					//plot the point
+					myChart.renderer.text("" + maxValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+					
+					//add min value in the plot
+					var minValue = myChart.series[i].data[j].low;
+					dataLength = ("" + minValue).length;
+					dataSpaceReq = (dataLength * spaceForCharacter);
+					
+					//find the y-axis corresponding to the value
+					pointY = 0;
+					if (myChart.yAxis[0].toValue(pointY) > minValue)
+						while (myChart.yAxis[0].toValue(pointY) >= minValue && !myChart.yAxis[0].toValue(pointY+3) < minValue)
+							pointY+=2;
+					else
+						while (myChart.yAxis[0].toValue(pointY) <= minValue && !myChart.yAxis[0].toValue(pointY+3) > minValue)
+							pointY+=2;
+					
+					//plot the point
+					myChart.renderer.text("" + minValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+					
+					//add median value in the plot
+					var medianValue = myChart.series[i].data[j].median;
+					dataLength = ("" + medianValue).length;
+					dataSpaceReq = (dataLength * spaceForCharacter);
+					
+					//find the y-axis corresponding to the value
+					pointY = 0;
+					if (myChart.yAxis[0].toValue(pointY) > medianValue)
+						while (myChart.yAxis[0].toValue(pointY) >= medianValue && !myChart.yAxis[0].toValue(pointY+3) < medianValue)
+							pointY+=2;
+					else
+						while (myChart.yAxis[0].toValue(pointY) <= medianValue && !myChart.yAxis[0].toValue(pointY+3) > medianValue)
+							pointY+=2;
+					
+					//plot the point
+					myChart.renderer.text("" + medianValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+				}
+			}
+		}
+		
+		//function to draw the plot based on the filter conditions
+		function drawPlot() {
+
+			//destroy the existing chart if any
+			if (chartHandle != null)
+				chartHandle.destroy();
+		
+			var selectedGroups = [];
+			var index = 0;
+			$(".filterCheckBox:checked").each(function(){
+						selectedGroups[index] = $(this).val();
+						index++;
+					});
+			//alert(selectedGroups);
+
+			var filteredCategories = selectedGroups;
+			var filteredJsonData = [];
+			var dataGroups = {};
+
+			for (var j = 0; j < filteredCategories.length; j++){
+
+				for (var i = 0; i < jsonData.data.length; i++){
+					var dataMap = jsonData.data[i];
+					var categoryGroup = dataMap["categoryGroup"];
+					
+					if (filteredCategories[j] == categoryGroup) {
+						var dataGroup = dataMap["dataGroup"];
+						
+						if (dataGroups[dataGroup] == null){
+							dataGroups[dataGroup] = [];
+						}
+						dataGroups[dataGroup].push(dataMap["data"]);
+						filteredJsonData.push(dataMap);
+					}
+				}
+			}
+			//alert(dataGroups);
+			
+			var filteredSeries = [];
+			for (var key in dataGroups) {
+				var seriesMap = {};
+				seriesMap["name"] = key;
+				seriesMap["data"] = dataGroups[key];
+				seriesMap["tooltip"] = {headerFormat: '<em>{point.key}</em><br/>', useHTML:true},
+				seriesMap["min"] = [[779,890,110],[34,435,234]];
+				filteredSeries.push(seriesMap);
+			}
+			//alert(filteredSeries);
+			
+			//$('#plotContainer').highcharts({
+			chartHandle = new Highcharts.Chart({
+
+				chart: {
+					renderTo: $('#plotContainer')[0],
+					type: 'boxplot',
+					marginTop: 100,
+					events: {
+									click: function(event) {
+										//alert('x: '+ event.xAxis[0].value + ', y: ' + event.yAxis[0].value + ' x=' + event.offsetX + ' y=' + event.offsetY);
+						}
+					}
+				},
+				
+				exporting: {
+					buttons: {
+						tableButton: {
+							x: -32,
+							_titleKey: 'tableButtonTitle',
+							symbol: 'url(img/table.png)',
+							onclick: function () {
+								if ($('g.tableButtonClass').attr("state") == "disabled") {
+									drawTableInPlot();
+									$('g.tableButtonClass').attr("state","enabled");
+								}
+								else {
+									removeTableFromPlot();
+									$('g.tableButtonClass').attr("state", "disabled");
+								}
+							},
+							theme: {
+								'class': "tableButtonClass",
+							}
+						},
+						
+						numericButton: {
+							x: -60,
+							_titleKey: 'numericButtonTitle',
+							height: 20,
+							width: 24,
+							symbol: 'url(img/numbers.png)',
+							onclick: function () {
+								if ($('g.numericButtonClass').attr("state") == "disabled") {
+									drawNumbersInPlot();
+									$('g.numericButtonClass').attr("state","enabled");
+								}
+								else {
+									removeNumbersFromPlot();
+									$('g.numericButtonClass').attr("state", "disabled");
+								}
+							},
+							theme: {
+								'class': "numericButtonClass",
+							}
+						}
+					}
+				},
+
+				legend: {
+					useHTML: true,
+					enabled: true,
+					borderWidth: 0
+				},
+				
+				tooltip: {
+					useHTML: true,
+					shadow: false,
+					positioner: function (labelWidth, labelHeight, point) {
+		            	return { x: point.plotX + 20, y: (point.plotY + 10) };
+		            },
+					style: {
+								color: '#333333',
+								fontSize: '11px',
+								padding: '5px'
+					}
+				},
+
+				plotOptions: {
+					column: {
+						colorByPoint: true
+					},
+					
+					series: {
+						dataLabels: {
+							enabled: true,
+							color: '#444444'
+						},
+						pointPadding: 0.25,
+						groupPadding: 0.05
+					},
+					
+					boxplot: {
+						fillColor: FILL_COLOR,
+						lineWidth: 2,
+						medianColor: MEDIAN_COLOR,
+						medianWidth: 3,
+						stemColor: STEM_COLOR,
+						stemDashStyle: 'dot',
+						stemWidth: 2,
+						whiskerColor: WHISKER_COLOR,
+						whiskerLength: '100%',
+						whiskerWidth: 2
+					}
+				},
+
+				colors: [
+					'#FF5E42', 
+					'#51B0FF', 
+					'#FE8D00', 
+					'#910000', 
+					'#1aadce', 
+					'#492970',
+					'#f28f43', 
+					'#77a1e5', 
+					'#c42525', 
+					'#a6c96a'
+				],
+
+				title: {
+					text: 'System Usability Scale',
+					x: 20
+				},
+
+				xAxis: {
+					categories: filteredCategories,
+					title: {
+						text: 'Experiment.'
+					}
+				},
+				
+				yAxis: {
+					title: {
+						text: 'Score'
+					}/*,
+					plotLines: [{
+						value: 932,
+						color: 'red',
+						width: 1,
+						label: {
+							text: 'Theoretical mean: 932',
+							align: 'center',
+							style: {
+								color: 'gray'
+							}
+						}
+					}] */ 
+				},
+
+				series: filteredSeries
+			},
+			function(chart) { // on complete
+     
+					myChart = chart;
+	 
+					/*
+					* All adjustments on top of highcharts
+					*/
+					//adjust the fill color based on the stroke (default options supports only one fillcolor across plots)
+					$("g.highcharts-series").find("path[fill=" + FILL_COLOR + "]").each(function(){
+						//get the stroke color and remove the # character from the color definition
+						var strokeColor = $(this).attr("stroke").substring(1);
+						var fillColor = (new Hex(strokeColor)).brightness(20);
+						$(this).attr("fill", "#" + fillColor);
+						$(this).attr("stroke", BORDER_COLOR);
+					});
+					
+					//create tabular data and append it to the plot
+					drawTableInPlot();
+					
+					//Adding numbers in the plot
+					drawNumbersInPlot();
+					
+					//Add click event on the ledgend so that the numbers can be re-rendered when ledgend is clicked
+					$(".highcharts-legend").click(function(){drawNumbersInPlot();});
+					
+					//add median to the legend
+					var lastLeftValue = parseInt($("div.highcharts-legend-item:last").css("left"));
+					var requiredWidth = parseInt($("div.highcharts-legend-item:last").find("span").width()) + 30;
+					var newLeftValue = lastLeftValue + requiredWidth;
+					$("div.highcharts-legend-item:last").parent().append($("div.highcharts-legend-item:last").clone().css("left", newLeftValue + "px"));
+					$("div.highcharts-legend-item:last").prepend("<div style='border-bottom: 3px solid " + MEDIAN_COLOR + "; height: 10px; width: 15px;'></div>");
+					$("div.highcharts-legend-item:last").find("span").html("Median");
+				}
+			);
+		}
+		
+		$(document).ready(function(){
+
+				//Initialize the filters in the panel
+				initializeFilterPanel();
+				
+				//set the titles for the additional buttons
+				Highcharts.setOptions({
+				    lang: {
+				        numericButtonTitle: "Add/Remove Labels",
+						tableButtonTitle: "Add/Remove Table"
+				    }
+				});
+				
+				//Create the chart based on the filters
+				$(".filterCheckBox").bind('click', function () {
+					drawPlot();
+				});
+				
+				//draw the plot by default
+				drawPlot();
+			}
+		);
+</script>
+
+</head>
+<body>
+	<script src="js/highcharts.js"></script>
+	<script src="js/highcharts-more.js"></script>
+	<script src="js/exporting.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/colorutils.min.js"></script>
+	<div class="container">
+		<div class="row">
+			<div class="span8 offset2 hero-unit">
+				<div class="filterHeader">Data Filter Panel</div>
+				<form class="form-horizontal">
+					<div id="filterDiv" class="control-group">
+						<label class="control-label" style="padding-top: 10px;margin-right: 20px;">Experiment to plot:</label>
+					</div>
+				</form>
+			</div>
+		</div>
+		<div class="row">
+			<div class="span8 offset2">
+				<div id="plotContainer" style="height: 550px; margin: auto; min-width: 450px; max-width: 750px">
+				</div>
+			</div>
+		</div>
+	</div>
+ </body>
+</html>
+
