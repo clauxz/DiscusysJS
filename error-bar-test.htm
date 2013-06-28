@@ -3,7 +3,7 @@
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>System Usability Scale</title>
+	<title>Comparing Means using Error Bar</title>
 	<script type='text/javascript' src='//code.jquery.com/jquery-1.9.1.js'></script>
 	<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
 	<link href="css/bootstrap-responsive.min.css" rel="stylesheet" type="text/css"/>
@@ -13,41 +13,59 @@
 			color: #274b6d;
 			padding-top: 25px;
 		}
-		
+
 		.hero-unit {
 			padding: 0px 30px;
 			margin-bottom: 20px;
 		}
-		
+
 		.form-horizontal .control-group {
 			margin-bottom: 10px;
 		}
-		
+
 		.table {
 			margin-bottom: 0px;
 		}
-		
+
 		.table-condensed td {
-			padding: 0px 10px;
+			padding: 0px 5px;
 			line-height: 15px;
 			opacity: 1;
 			background-color: #FFFFFF;
+			white-space: nowrap;
 		}
-		
+
 		.label, .badge {
 			font-weight: normal;
 			font-size: 11px;
 			margin-bottom: 4px;
 			display: block;
 		}
-		
+
 		#dataTable {
 			position:absolute;
-			left:60px;
-			top:18px;
+			left:95px;
+			top:19px;
 			font-size:9px;
 			border: 1px solid #999999;
 			border-radius: 5px;
+		}
+		
+		/*For Freezing the first column and add scroll bar*/
+		#dataTable > div {
+			width: 400px;
+			overflow-x: scroll;
+			overflow-y: hidden;
+		}
+
+		.freezeColumn {
+			position:absolute; 
+            width:5em; 
+            left:0;
+            top:auto;
+            border-right: 0px none black; 
+			background-color: #49afcd !important;
+			color: #ffffff;
 		}
 		
 		#filterDiv {
@@ -56,25 +74,26 @@
 			border:1px solid #3a87ad;
 			border-radius:5px;
 			color:#555555;
-			width:125px;
+			width:190px;
 		}
 	</style>
-	<script type='text/javascript' src='box-plot-json-r.js'></script>
+	<script type='text/javascript' src='error-bar-json-r.js'></script>
+	<script type='text/javascript' src='error-bar-json-chart.js'></script>
 	<script type='text/javascript'>
 
-		var tableColumnData = ["N", "Mean", "SD", "P Value", "C Alpha"];
-		var tableRowHeader = ["Measurement", "Type"];
-	
+		var tableColumnData = ["Measurement", "Type Short"];
+		var tableRowHeader = ["Mean", "SD", "Lower CI", "Upper CI", "P Value"];
+
 		var FILL_COLOR = "#F0F0E0";
 		var MEDIAN_COLOR = "#020202";
 		var STEM_COLOR = "#040404";
 		var BORDER_COLOR = "#444444";
 		var WHISKER_COLOR = "#777777";
-	
+
 		//variable to hold the chart's handle
 		var myChart = null;
 		var chartHandle = null;
-		
+
 		//function to change the filter panels dynamically based on the json data
 		function initializeFilterPanel() {
 			var distinctCategories = {};
@@ -83,79 +102,114 @@
 				var categoryGroup = dataMap["Measurement"];
 				distinctCategories[categoryGroup] = 1;
 			}
-			
+
 			//create the filter checkboxes as per the categories
+			var isFirst = 1;
 			for (var key in distinctCategories) {
-				$("#filterDiv").append('<label class="filterItem block label label-success active">' + key + '</label>');
+				if (isFirst == 1){
+					$("#filterDiv").append('<label class="filterItem block label label-success active">' + key + '</label>');
+					isFirst = 0;
+				}
+				else
+					$("#filterDiv").append('<label class="filterItem block label inactive">' + key + '</label>');
 			}
 		}
-		
+
 		//Function to remove table from the plot
 		function removeTableFromPlot() {
 			$("#dataTable").remove();
 		}
-		
+
 		//Function to draw table in the plot
 		function drawTableInPlot() {
-		
+
 			//remove existing table and draw the table
-			removeTableFromPlot() 
-		
-			var tableStr = '<div id="dataTable">';
-			tableStr += '<table class="table table-hover table-condensed">';
+			removeTableFromPlot()
+ 
+			var tableStr = '<div id="dataTable"><div>';
+			tableStr += '<table class="table table-hover table-condensed table-striped">';
 
 			var tabularData = [];
-			
+
 			//add column header row
-			var columnHeader = [""];
-			for (var i = 0; i < tableColumnData.length; i++){
-				columnHeader.push(tableColumnData[i]);
+			var columnHeader = ["&nbsp;"];
+			for (var i = 0; i < jsonData.data.length; i++){
+				var dataMap = jsonData.data[i];
+				var header = "";
+				for (var j = 0; j < tableColumnData.length; j++){
+					header = header + " " + dataMap[tableColumnData[j]];
+				}
+				columnHeader.push($.trim(header));
 			}
 			tabularData.push(columnHeader);
-			
-			for (var j = 0; j < jsonData.data.length; j++){
+
+			for (var k = 0; k < tableRowHeader.length; k++){
+				var tableRow = [];
+				tableRow.push($.trim(tableRowHeader[k]));
 				
-				var tableRow = [];	
-				var dataMap = jsonData.data[j];
-				
-				//push row header first
-				var rowHeader = "";
-				for (var k = 0; k < tableRowHeader.length; k++){
-					rowHeader = rowHeader + " " + dataMap[tableRowHeader[k]];
-				}
-				tableRow.push($.trim(rowHeader));
-				
-				for (var k = 0; k < tableColumnData.length; k++){
-					tableRow.push(dataMap[tableColumnData[k]]);
+				for (var j = 0; j < jsonData.data.length; j++){
+					var dataMap = jsonData.data[j];
+					tableRow.push(dataMap[tableRowHeader[k]]);
 				}
 				tabularData.push(tableRow);
 			}
-			
+
 			for (var i = 0; i < tabularData.length; i++){
 				tableStr += "<tr>";
 				var dataArray = tabularData[i];
 				for (var j = 0; j < dataArray.length; j++)
-					tableStr += "<td>" + dataArray[j] + "</td>";
+					if (j == 0)
+						tableStr += "<td class='freezeColumn'>" + dataArray[j] + "</td><td style='padding-right:50px;'>&nbsp;</td>";
+					else
+						tableStr += "<td>" + dataArray[j] + "</td>";
 					tableStr += "</tr>";
 			}
-			
-			tableStr += "</table></div>";
+
+			tableStr += "</table></div></div>";
 			//$("#tableContainer").append(tableStr);
 			$("div.highcharts-legend").parent().append(tableStr);
 			$("div.highcharts-tooltip > span").css({'opacity':1, 'background-color':"#FFFFFF","z-index":100});
+		}
+
+		// function to convert median to a triangle
+		function drawTriangleInPlot() {
+
+			//remove the box
+			$("g.highcharts-series-group").find("path[fill=#FFFFFF]").remove();
+
+			//draw the triangle using median line
+			$("g.highcharts-series-group").find("path[stroke-width=2]").each(function(index){
+					var d = $(this).attr("d");
+					var pointArray = d.split(" ");
+
+					var startX = parseFloat(pointArray[1]);
+					var endX = parseFloat(pointArray[4]);
+					var midX = (startX + endX)/2.0;
+
+					var triangleWidth = endX - startX;
+					var startY = parseFloat(pointArray[2]);
+
+					//adjust the Y position so that triangle is in middle
+					startY = startY + (triangleWidth/2);
+					var endY = startY - triangleWidth;
+
+					var trianglePoints = "M " + startX + " " + startY + " L " + endX + " " + startY + " L " + midX + " " + endY + " L " + startX + " " + startY + " z";
+					$(this).attr("d",trianglePoints);
+					$(this).attr("fill", $(this).attr("stroke"));
+				});
 		}
 		
 		//Function to remove the numbers in plot
 		function removeNumbersFromPlot() {
 			$("text.plotNumbers").remove();
 		}
-		
+
 		//Function to plot the numbers in the plot
 		function drawNumbersInPlot() {
-		
+
 			//remove the earlier plotted numbers
 			removeNumbersFromPlot();
-			
+
 			//Find the distance between the plots in the series
 			var distanceBetweenPlots = 0;
 			var boxWidth = 0;
@@ -163,28 +217,28 @@
 			if ((myChart.series.length > 1) && (myChart.series[0].data.length >= 1))	{
 				distanceBetweenPlots = myChart.series[1].data[0].barX - myChart.series[0].data[0].barX;
 			}
-			
+
 			for (var i = 0; i < myChart.series.length; i++)
 			{
 				//show numbers only if the series is visible
 				if (!myChart.series[i].visible)
 					continue;
-				
+
 				for (var j = 0; j < myChart.series[i].data.length; j++)
 				{
 					//series color
 					var seriesColor = myChart.series[i].color;
 					var textColor = myChart.series[0].color.substring(1);
 					textColor = "#" + (new Hex(seriesColor)).brightness(-40);
-					
+
 					//find the box's width
 					boxWidth = myChart.series[i].data[j].pointWidth + 2;
-					
+
 					//add q1 value in the plot (should be plotted on left side)
 					var q1Value = myChart.series[i].data[j].q1;
 					var dataLength = ("" + q1Value).length;
 					var dataSpaceReq = (dataLength * spaceForCharacter) + 4;
-					
+
 					//find the y-axis corresponding to the value
 					var pointY = 0;
 					if (myChart.yAxis[0].toValue(pointY) > q1Value)
@@ -193,32 +247,15 @@
 					else
 						while (myChart.yAxis[0].toValue(pointY) < q1Value && !myChart.yAxis[0].toValue(pointY+3) > q1Value)
 							pointY+=2;
-					
+
 					//plot the point
 					myChart.renderer.text("" + q1Value, myChart.plotLeft + myChart.series[i].data[j].barX - dataSpaceReq, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
-					
-					//add q3 value in the plot (should be plotted on left side)
-					var q3Value = myChart.series[i].data[j].q3;
-					dataLength = ("" + q3Value).length;
-					dataSpaceReq = (dataLength * spaceForCharacter) + 4;
-					
-					//find the y-axis corresponding to the value
-					pointY = 0;
-					if (myChart.yAxis[0].toValue(pointY) > q3Value)
-						while (myChart.yAxis[0].toValue(pointY) >= q3Value && !myChart.yAxis[0].toValue(pointY+3) < q3Value)
-							pointY+=2;
-					else
-						while (myChart.yAxis[0].toValue(pointY) <= q3Value && !myChart.yAxis[0].toValue(pointY+3) > q3Value)
-							pointY+=2;
-					
-					//plot the point
-					myChart.renderer.text("" + q3Value, myChart.plotLeft + myChart.series[i].data[j].barX - dataSpaceReq, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
-					
+
 					//add max value in the plot
 					var maxValue = myChart.series[i].data[j].high;
 					dataLength = ("" + maxValue).length;
 					dataSpaceReq = (dataLength * spaceForCharacter);
-					
+
 					//find the y-axis corresponding to the value
 					pointY = 0;
 					if (myChart.yAxis[0].toValue(pointY) > maxValue)
@@ -227,47 +264,26 @@
 					else
 						while (myChart.yAxis[0].toValue(pointY) <= maxValue && !myChart.yAxis[0].toValue(pointY+3) > maxValue)
 							pointY+=2;
-					
+
 					//plot the point
 					myChart.renderer.text("" + maxValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
-					
+
 					//add min value in the plot
 					var minValue = myChart.series[i].data[j].low;
 					dataLength = ("" + minValue).length;
 					dataSpaceReq = (dataLength * spaceForCharacter);
-					
+
 					//find the y-axis corresponding to the value
-					pointY = 0;
-					if (myChart.yAxis[0].toValue(pointY) > minValue)
-						while (myChart.yAxis[0].toValue(pointY) >= minValue && !myChart.yAxis[0].toValue(pointY+3) < minValue)
-							pointY+=2;
-					else
-						while (myChart.yAxis[0].toValue(pointY) <= minValue && !myChart.yAxis[0].toValue(pointY+3) > minValue)
-							pointY+=2;
-					
+					pointY = 1;
+					while (myChart.yAxis[0].toValue(pointY-1) >= minValue && myChart.yAxis[0].toValue(pointY) > minValue)
+						pointY+=1;
+
 					//plot the point
-					myChart.renderer.text("" + minValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
-					
-					//add median value in the plot
-					var medianValue = myChart.series[i].data[j].median;
-					dataLength = ("" + medianValue).length;
-					dataSpaceReq = (dataLength * spaceForCharacter);
-					
-					//find the y-axis corresponding to the value
-					pointY = 0;
-					if (myChart.yAxis[0].toValue(pointY) > medianValue)
-						while (myChart.yAxis[0].toValue(pointY) >= medianValue && !myChart.yAxis[0].toValue(pointY+3) < medianValue)
-							pointY+=2;
-					else
-						while (myChart.yAxis[0].toValue(pointY) <= medianValue && !myChart.yAxis[0].toValue(pointY+3) > medianValue)
-							pointY+=2;
-					
-					//plot the point
-					myChart.renderer.text("" + medianValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
+					myChart.renderer.text("" + minValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+1).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
 				}
 			}
 		}
-		
+
 		//function to initialize the filter panel
 		function createFilterPanel(){
 			var filterDivWidth = (0 - $("#filterDiv").width()-35) + "px";
@@ -282,16 +298,16 @@
 					}
 				});
 			$(".filterItem").hover(function(){$(this).stop().animate({'marginLeft':'5px'},200);},function(){$(this).stop().animate({'marginLeft':'0px'},200);});
-			$("#filterContainer").css({"top":$("#plotContainer").offset().top + 31, "left":0, "z-index":99, "position":"absolute"}).show();
+			$("#filterContainer").css({"top":$("#plotContainer").offset().top + 21, "left":0, "z-index":99, "position":"absolute"}).show();
 		}
-		
+
 		//function to draw the plot based on the filter conditions
 		function drawPlot() {
 
 			//destroy the existing chart if any
 			if (chartHandle != null)
 				chartHandle.destroy();
-		
+
 			var selectedGroups = [];
 			var index = 0;
 			$("label.filterItem.active").each(function(){
@@ -305,74 +321,96 @@
 			var dataGroups = {};
 			var maxValue = 0;
 			var minValue = 0;
-			
+
 			for (var j = 0; j < filteredCategories.length; j++){
 
 				for (var i = 0; i < jsonData.data.length; i++){
 					var dataMap = jsonData.data[i];
 					var categoryGroup = dataMap["Measurement"];
-					
+
 					if (filteredCategories[j] == categoryGroup) {
 						var dataGroup = dataMap["Type"];
-						
+
 						if (dataGroups[dataGroup] == null){
 							dataGroups[dataGroup] = [];
 						}
-						var dataArray = [];
-						dataArray.push(parseFloat(dataMap["Minimum"]));
-						dataArray.push(parseFloat(dataMap["First Quartile"]));
-						dataArray.push(parseFloat(dataMap["Median"]));
-						dataArray.push(parseFloat(dataMap["Third Quartile"]));
-						dataArray.push(parseFloat(dataMap["Maximum"]));
-						
-						if (maxValue < parseFloat(dataMap["Maximum"]))
-							maxValue = parseFloat(dataMap["Maximum"]);
-						
-						if (minValue > parseFloat(dataMap["Minimum"]))
-							minValue = parseFloat(dataMap["Minimum"]);
-						
+
+						var dataArray = {};
+						dataArray["low"] = parseFloat(dataMap["Lower CI"]);
+						dataArray["q1"] = parseFloat(dataMap["Mean"]);
+						dataArray["median"] = parseFloat(dataMap["Mean"]);
+						dataArray["q3"] = parseFloat(dataMap["Mean"]);
+						dataArray["high"] = parseFloat(dataMap["Upper CI"]);
+						dataArray["sd"] = parseFloat(dataMap["SD"]);
+						dataArray["pValue"] = parseFloat(dataMap["P Value"]);
+						dataArray["n"] = parseFloat(dataMap["N"]);
+						dataArray["se"] = parseFloat(dataMap["SE of Mean"]);
+						dataArray["type"] = dataMap["Type"];
+						dataArray["typeShort"] = dataMap["Type Short"];
+
+						if (maxValue < parseFloat(dataMap["Upper CI"]))
+							maxValue = parseFloat(dataMap["Upper CI"]);
+
+						if (minValue > parseFloat(dataMap["Lower CI"]))
+							minValue = parseFloat(dataMap["Lower CI"]);
+
 						dataGroups[dataGroup].push(dataArray);
 						filteredJsonData.push(dataMap);
 					}
 				}
 			}
 			//alert(dataGroups);
-			
+
 			var filteredSeries = [];
 			for (var key in dataGroups) {
 				var seriesMap = {};
 				seriesMap["name"] = key;
 				seriesMap["data"] = dataGroups[key];
-				seriesMap["tooltip"] = {headerFormat: '<em>{point.key}</em><br/>', useHTML:true},
-				seriesMap["min"] = [[779,890,110],[34,435,234]];
 				filteredSeries.push(seriesMap);
 			}
 			//alert(filteredSeries);
-			
+
 			//$('#plotContainer').highcharts({
 			chartHandle = new Highcharts.Chart({
 
 				chart: {
 					renderTo: $('#plotContainer')[0],
 					type: 'boxplot',
-					marginTop: 95,
-					marginLeft: 90,
+					marginTop: 90,
+					//marginLeft: 10,
 					events: {
 						click: function(event) {
 							//alert('x: '+ event.xAxis[0].value + ', y: ' + event.yAxis[0].value + ' x=' + event.offsetX + ' y=' + event.offsetY);
 						},
 						redraw: function() {
 		                    drawNumbersInPlot();
+
+							//draw triangle in plot
+							drawTriangleInPlot();
 		                }
 					}
 				},
-				
+
 				exporting: {
 					buttons: {
+						contextButton: {
+							height: 36,
+							width: 36,
+							symbol: 'url(img/plot_print.png)',
+							symbolSize: 18,
+							symbolX: 18,
+							symbolY: 18
+						},
+
 						tableButton: {
-							x: -32,
+							x: -42,
 							_titleKey: 'tableButtonTitle',
-							symbol: 'url(img/table.png)',
+							height: 36,
+							width: 36,
+							symbolSize: 18,
+							symbolX: 18,
+							symbolY: 18,
+							symbol: 'url(img/plot_table.png)',
 							onclick: function () {
 								if ($('g.tableButtonClass').attr("state") == "disabled") {
 									drawTableInPlot();
@@ -388,13 +426,16 @@
 								'state': 'disabled'
 							}
 						},
-						
+
 						numericButton: {
-							x: -60,
+							x: -84,
 							_titleKey: 'numericButtonTitle',
-							height: 20,
-							width: 24,
-							symbol: 'url(img/numbers.png)',
+							height: 36,
+							width: 36,
+							symbolSize: 18,
+							symbolX: 18,
+							symbolY: 18,
+							symbol: 'url(img/plot_numbering.png)',
 							onclick: function () {
 								if ($('g.numericButtonClass').attr("state") == "disabled") {
 									drawNumbersInPlot();
@@ -407,7 +448,7 @@
 							},
 							theme: {
 								'class': "numericButtonClass",
-								'state': 'disabled'
+								'state': 'enabled'
 							}
 						}
 					}
@@ -418,13 +459,25 @@
 					enabled: true,
 					borderWidth: 0
 				},
-				
+
 				tooltip: {
 					useHTML: true,
-					shadow: false,
-					positioner: function (labelWidth, labelHeight, point) {
-		            	return { x: point.plotX + 20, y: (point.plotY + 10) };
+					shared: false,
+					formatter: function() {
+		                return '<em>'+ this.point.category + '</em><br/>' +
+								'<span style="color:'+ this.series.color +';font-weight:bold">' + this.series.name + '</span><br/>' +
+								'N: ' + this.point.n + '<br/>' +
+								'Mean: ' + this.point.median + '<br/>' +
+								'SD: ' + this.point.sd + '<br/>' +
+								'SE: ' + this.point.se + '<br/>' +
+								'Lower CI: ' + this.point.low + '<br/>' +
+								'Upper CI: ' + this.point.high + '<br/>' +
+								'P Value: ' + this.point.pValue + '<br/>';
 		            },
+					shadow: false,
+					/*positioner: function (labelWidth, labelHeight, point) {
+		            	return { x: point.plotX + 20, y: (point.plotY + 10) };
+		            },*/
 					style: {
 								color: '#333333',
 								fontSize: '11px',
@@ -433,43 +486,57 @@
 				},
 
 				plotOptions: {
-					column: {
-						colorByPoint: true
+					boxplot: {
+						stemWidth: 1.2,
+						whiskerWidth: 1,
+						whiskerLength: "100%",
+						point: {
+							events: {
+								mouseOver: function(event) {
+									var pointHandle = $(this)[0];
+									var measurement = pointHandle.category;
+									var type = pointHandle.typeShort;
+									
+									//iterate over the chart data and see if there is any chart corresponding to this entry
+									var chartURL = "";
+									for (var i = 0; i < jsonChartData.data.length; i++)
+									{
+										var dataMap = jsonChartData.data[i];
+										if ((dataMap["Measurement"] == measurement) && (dataMap["Type Short"] == type))
+										{
+											chartURL = dataMap["Chart"];
+										}	
+									}
+									
+									$("#chartContainer").attr("src",chartURL);
+									
+									//alert(measurement + " " + type + " url:" + chartURL);
+									//$report.html('Moused over').css('color', 'green');
+								}
+							}
+						}
 					},
-					
 					series: {
 						dataLabels: {
 							enabled: true,
 							color: '#444444'
 						},
-						pointPadding: 0.38,
-						groupPadding: 0.02
-					},
-					
-					boxplot: {
-						fillColor: FILL_COLOR,
-						lineWidth: 2,
-						medianColor: MEDIAN_COLOR,
-						medianWidth: 3,
-						stemColor: STEM_COLOR,
-						stemDashStyle: 'dot',
-						stemWidth: 2,
-						whiskerColor: WHISKER_COLOR,
-						whiskerLength: '100%',
-						whiskerWidth: 2
+						pointPadding: 0.30,
+						groupPadding: 0.05,
+						pointWidth: 15
 					}
 				},
 
 				colors: [
-					'#FF5E42', 
-					'#51B0FF', 
-					'#FE8D00', 
-					'#910000', 
-					'#1aadce', 
+					'#FF5E42',
+					'#51B0FF',
+					'#FE8D00',
+					'#910000',
+					'#1aadce',
 					'#492970',
-					'#f28f43', 
-					'#77a1e5', 
-					'#c42525', 
+					'#f28f43',
+					'#77a1e5',
+					'#c42525',
 					'#a6c96a'
 				],
 
@@ -483,55 +550,62 @@
 						text: 'Experiment.'
 					}
 				},
-				
+
 				yAxis: {
 					title: {
 						text: 'Score'
 					},
 					endOnTick: false,
 					tickPosition: 'inside',
-					//min: 0,
 					max: maxValue + ((maxValue - minValue)/3.6)
 				},
 
 				series: filteredSeries
 			},
 			function(chart) { // on complete
-     
+
 					myChart = chart;
-	 
+
 					/*
 					* All adjustments on top of highcharts
 					*/
 					//adjust the fill color based on the stroke (default options supports only one fillcolor across plots)
-					$("g.highcharts-series").find("path[fill=" + FILL_COLOR + "]").each(function(){
+					/*$("g.highcharts-series").find("path[fill=" + FILL_COLOR + "]").each(function(){
 						//get the stroke color and remove the # character from the color definition
 						var strokeColor = $(this).attr("stroke").substring(1);
 						var fillColor = (new Hex(strokeColor)).brightness(20);
 						$(this).attr("fill", "#" + fillColor);
 						$(this).attr("stroke", BORDER_COLOR);
-					});
-					
+					});*/
+
+					//draw triangle in plot
+					drawTriangleInPlot();
+
+					//Add click event on the ledgend so that the numbers can be re-rendered when ledgend is clicked
+					$(".highcharts-legend").click(function(){setTimeout(drawTriangleInPlot,400);drawNumbersInPlot();});
+
 					//create tabular data and append it to the plot
 					//drawTableInPlot();
-					
+
 					//Adding numbers in the plot
-					//drawNumbersInPlot();
-					
+					drawNumbersInPlot();
+
+					//Add click event on the ledgend so that the numbers can be re-rendered when ledgend is clicked
+					$(".highcharts-legend").click(function(){drawNumbersInPlot();});
+
 					//To fix the cases when the min value coincides with x-axis
 					var yMaxPos = 0;
-					$("g.highcharts-series-group  path[fill=none]").each(function(index){
+					$("g.highcharts-series-group").find("path[stroke=" + WHISKER_COLOR + "]").each(function(index){
 						var pos = $(this).attr("d").split(" ");
-						var yPos = pos[pos.length - 1];
-						if (yPos == 'z')
-						    return;
+						var yPos = parseInt(pos[pos.length - 1]);
+
 						if (yMaxPos < yPos){
 						    yMaxPos = yPos;
 							pathHandle = $(this);
 						}
 					});
 
-					$("g.highcharts-series-group  path[fill=none]").each(function(index){
+					$("g.highcharts-series-group").find("path[stroke=" + WHISKER_COLOR + "]").each(function(index){
 						var pos = $(this).attr("d").split(" ");
 						if (pos[pos.length - 1] == yMaxPos){
 							pos[pos.length - 1] = yMaxPos - 2;
@@ -539,26 +613,15 @@
 						}
 						$(this).attr("d",pos.join(" "));
 					});
-
-					//Add click event on the ledgend so that the numbers can be re-rendered when ledgend is clicked
-					$(".highcharts-legend").click(function(){drawNumbersInPlot();});
-					
-					//add median to the legend
-					var lastLeftValue = parseInt($("div.highcharts-legend-item:last").css("left"));
-					var requiredWidth = parseInt($("div.highcharts-legend-item:last").find("span").width()) + 30;
-					var newLeftValue = lastLeftValue + requiredWidth;
-					$("div.highcharts-legend-item:last").parent().append($("div.highcharts-legend-item:last").clone().css("left", newLeftValue + "px"));
-					$("div.highcharts-legend-item:last").prepend("<div style='border-bottom: 3px solid " + MEDIAN_COLOR + "; height: 10px; width: 15px;'></div>");
-					$("div.highcharts-legend-item:last").find("span").html("Median");
 				}
 			);
 		}
-		
+
 		$(document).ready(function(){
 
 				//Initialize the filters in the panel
 				initializeFilterPanel();
-				
+
 				//set the titles for the additional buttons
 				Highcharts.setOptions({
 				    lang: {
@@ -566,20 +629,20 @@
 						tableButtonTitle: "Add/Remove Table"
 				    }
 				});
-				
+
 				//Create the chart based on the filters
 				$("label.filterItem").bind('click', function () {
-					
-					if ($(this).hasClass("active")) 
+
+					if ($(this).hasClass("active"))
 						$(this).removeClass("active").removeClass("label-success")
 					else
 						$(this).addClass("active").addClass("label-success")
 					drawPlot();
 				});
-				
+
 				//draw the plot by default
 				drawPlot();
-				
+
 				//set the filter panel co-ordinates & bind events to it
 				setTimeout(createFilterPanel,200);
 			}
@@ -595,23 +658,31 @@
 	<script src="js/colorutils.min.js"></script>
 	<div class="container">
 		<div class="row">
-			<span class="span10 offset1 hero-unit"><h4 class="text-center">System Usability Scale</h4></span>
+			<span class="span10 offset1 hero-unit"><h4 class="text-center">Comparison of Mean between: variable, variable and variables</h4></span>
 		</div>
 		<div class="row">
 			<div class="span12">
 				<div id="filterContainer" style="display:none">
 					<div id="filterButton" style="float:left;margin-right:-80px">
 						<a class="filterLink btn btn-small  btn-info">
-						<!--<img src="img/filter_data.png" width="25" height="20" style="height: 20px;width: 25px;"/>--> <i class="icon-filter icon-white"></i> <span style="font-size:13.5px;">Filter</span></a>
+						<i class="icon-filter icon-white"></i> <span style="font-size:13.5px;">Measurement</span></a>
 					</div>
 					<div style="clear:both;"></div>
 					<div id="filterDiv" class="control-group inactive">
 					</div>
 				</div>
-				<div id="plotContainer" style="height: 550px; margin: auto; min-width: 450px; max-width: 1200px">
+				<div class="row">
+					<div class="span2">
+						<img id="chartContainer" src="" style="margin-top:100px;"/>
+					</div>
+					<div class="span10">
+						<div id="plotContainer" style="height: 600px; margin: auto; min-width: 450px; max-width: 1200px">
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
 	</div>
  </body>
 </html>
+

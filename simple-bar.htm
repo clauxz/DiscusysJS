@@ -3,7 +3,7 @@
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Comparing Means using Error Bar</title>
+	<title>Average per Session</title>
 	<script type='text/javascript' src='//code.jquery.com/jquery-1.9.1.js'></script>
 	<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
 	<link href="css/bootstrap-responsive.min.css" rel="stylesheet" type="text/css"/>
@@ -77,18 +77,13 @@
 			width:190px;
 		}
 	</style>
-	<script type='text/javascript' src='error-bar-json-r.js'></script>
-	<script type='text/javascript' src='error-bar-json-chart.js'></script>
+	<script type='text/javascript' src='simple-bar-json-r.js'></script>
 	<script type='text/javascript'>
 
 		var tableColumnData = ["Measurement", "Type Short"];
 		var tableRowHeader = ["Mean", "SD", "Lower CI", "Upper CI", "P Value"];
 
-		var FILL_COLOR = "#F0F0E0";
-		var MEDIAN_COLOR = "#020202";
-		var STEM_COLOR = "#040404";
 		var BORDER_COLOR = "#444444";
-		var WHISKER_COLOR = "#777777";
 
 		//variable to hold the chart's handle
 		var myChart = null;
@@ -104,14 +99,8 @@
 			}
 
 			//create the filter checkboxes as per the categories
-			var isFirst = 1;
 			for (var key in distinctCategories) {
-				if (isFirst == 1){
-					$("#filterDiv").append('<label class="filterItem block label label-success active">' + key + '</label>');
-					isFirst = 0;
-				}
-				else
-					$("#filterDiv").append('<label class="filterItem block label inactive">' + key + '</label>');
+				$("#filterDiv").append('<label class="filterItem block label label-success active">' + key + '</label>');
 			}
 		}
 
@@ -171,116 +160,24 @@
 			$("div.highcharts-tooltip > span").css({'opacity':1, 'background-color':"#FFFFFF","z-index":100});
 		}
 
-		// function to convert median to a triangle
-		function drawTriangleInPlot() {
-
-			//remove the box
-			$("g.highcharts-series-group").find("path[fill=#FFFFFF]").remove();
-
-			//draw the triangle using median line
-			$("g.highcharts-series-group").find("path[stroke-width=2]").each(function(index){
-					var d = $(this).attr("d");
-					var pointArray = d.split(" ");
-
-					var startX = parseFloat(pointArray[1]);
-					var endX = parseFloat(pointArray[4]);
-					var midX = (startX + endX)/2.0;
-
-					var triangleWidth = endX - startX;
-					var startY = parseFloat(pointArray[2]);
-
-					//adjust the Y position so that triangle is in middle
-					startY = startY + (triangleWidth/2);
-					var endY = startY - triangleWidth;
-
-					var trianglePoints = "M " + startX + " " + startY + " L " + endX + " " + startY + " L " + midX + " " + endY + " L " + startX + " " + startY + " z";
-					$(this).attr("d",trianglePoints);
-					$(this).attr("fill", $(this).attr("stroke"));
-				});
-		}
-		
 		//Function to remove the numbers in plot
 		function removeNumbersFromPlot() {
-			$("text.plotNumbers").remove();
+			for (var i = 0; i < myChart.series.length; i++)
+			{
+				myChart.series[i].update({
+					dataLabels: {enabled:false}
+				});
+			}
 		}
 
 		//Function to plot the numbers in the plot
 		function drawNumbersInPlot() {
 
-			//remove the earlier plotted numbers
-			removeNumbersFromPlot();
-
-			//Find the distance between the plots in the series
-			var distanceBetweenPlots = 0;
-			var boxWidth = 0;
-			var spaceForCharacter = 6; //in pixel
-			if ((myChart.series.length > 1) && (myChart.series[0].data.length >= 1))	{
-				distanceBetweenPlots = myChart.series[1].data[0].barX - myChart.series[0].data[0].barX;
-			}
-
 			for (var i = 0; i < myChart.series.length; i++)
 			{
-				//show numbers only if the series is visible
-				if (!myChart.series[i].visible)
-					continue;
-
-				for (var j = 0; j < myChart.series[i].data.length; j++)
-				{
-					//series color
-					var seriesColor = myChart.series[i].color;
-					var textColor = myChart.series[0].color.substring(1);
-					textColor = "#" + (new Hex(seriesColor)).brightness(-40);
-
-					//find the box's width
-					boxWidth = myChart.series[i].data[j].pointWidth + 2;
-
-					//add q1 value in the plot (should be plotted on left side)
-					var q1Value = myChart.series[i].data[j].q1;
-					var dataLength = ("" + q1Value).length;
-					var dataSpaceReq = (dataLength * spaceForCharacter) + 4;
-
-					//find the y-axis corresponding to the value
-					var pointY = 0;
-					if (myChart.yAxis[0].toValue(pointY) > q1Value)
-						while (myChart.yAxis[0].toValue(pointY) > q1Value && !myChart.yAxis[0].toValue(pointY+3) < q1Value)
-							pointY+=2;
-					else
-						while (myChart.yAxis[0].toValue(pointY) < q1Value && !myChart.yAxis[0].toValue(pointY+3) > q1Value)
-							pointY+=2;
-
-					//plot the point
-					myChart.renderer.text("" + q1Value, myChart.plotLeft + myChart.series[i].data[j].barX - dataSpaceReq, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
-
-					//add max value in the plot
-					var maxValue = myChart.series[i].data[j].high;
-					dataLength = ("" + maxValue).length;
-					dataSpaceReq = (dataLength * spaceForCharacter);
-
-					//find the y-axis corresponding to the value
-					pointY = 0;
-					if (myChart.yAxis[0].toValue(pointY) > maxValue)
-						while (myChart.yAxis[0].toValue(pointY) >= maxValue && !myChart.yAxis[0].toValue(pointY+3) < maxValue)
-							pointY+=2;
-					else
-						while (myChart.yAxis[0].toValue(pointY) <= maxValue && !myChart.yAxis[0].toValue(pointY+3) > maxValue)
-							pointY+=2;
-
-					//plot the point
-					myChart.renderer.text("" + maxValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+2).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
-
-					//add min value in the plot
-					var minValue = myChart.series[i].data[j].low;
-					dataLength = ("" + minValue).length;
-					dataSpaceReq = (dataLength * spaceForCharacter);
-
-					//find the y-axis corresponding to the value
-					pointY = 1;
-					while (myChart.yAxis[0].toValue(pointY-1) >= minValue && myChart.yAxis[0].toValue(pointY) > minValue)
-						pointY+=1;
-
-					//plot the point
-					myChart.renderer.text("" + minValue, myChart.plotLeft + myChart.series[i].data[j].barX + boxWidth, pointY+1).attr({zIndex:5, style:"font-size: 10px;color:" + textColor,class:"plotNumbers"}).add();
-				}
+				myChart.series[i].update({
+					dataLabels: {enabled:true}
+				});
 			}
 		}
 
@@ -335,7 +232,7 @@
 							dataGroups[dataGroup] = [];
 						}
 
-						var dataArray = {};
+						/*var dataArray = {};
 						dataArray["low"] = parseFloat(dataMap["Lower CI"]);
 						dataArray["q1"] = parseFloat(dataMap["Mean"]);
 						dataArray["median"] = parseFloat(dataMap["Mean"]);
@@ -344,17 +241,9 @@
 						dataArray["sd"] = parseFloat(dataMap["SD"]);
 						dataArray["pValue"] = parseFloat(dataMap["P Value"]);
 						dataArray["n"] = parseFloat(dataMap["N"]);
-						dataArray["se"] = parseFloat(dataMap["SE of Mean"]);
-						dataArray["type"] = dataMap["Type"];
-						dataArray["typeShort"] = dataMap["Type Short"];
+						dataArray["se"] = parseFloat(dataMap["SE of Mean"]);*/
 
-						if (maxValue < parseFloat(dataMap["Upper CI"]))
-							maxValue = parseFloat(dataMap["Upper CI"]);
-
-						if (minValue > parseFloat(dataMap["Lower CI"]))
-							minValue = parseFloat(dataMap["Lower CI"]);
-
-						dataGroups[dataGroup].push(dataArray);
+						dataGroups[dataGroup].push(parseFloat(dataMap["Mean"]));
 						filteredJsonData.push(dataMap);
 					}
 				}
@@ -368,27 +257,14 @@
 				seriesMap["data"] = dataGroups[key];
 				filteredSeries.push(seriesMap);
 			}
-			//alert(filteredSeries);
 
-			//$('#plotContainer').highcharts({
 			chartHandle = new Highcharts.Chart({
 
 				chart: {
 					renderTo: $('#plotContainer')[0],
-					type: 'boxplot',
-					marginTop: 90,
-					marginLeft: 120,
-					events: {
-						click: function(event) {
-							//alert('x: '+ event.xAxis[0].value + ', y: ' + event.yAxis[0].value + ' x=' + event.offsetX + ' y=' + event.offsetY);
-						},
-						redraw: function() {
-		                    drawNumbersInPlot();
-
-							//draw triangle in plot
-							drawTriangleInPlot();
-		                }
-					}
+					type: 'column',
+					marginTop: 60,
+					marginLeft: 120
 				},
 
 				exporting: {
@@ -402,12 +278,12 @@
 							symbolY: 18
 						},
 
-						tableButton: {
+						/*tableButton: {
 							x: -42,
 							_titleKey: 'tableButtonTitle',
-							height: 36,
-							width: 36,
-							symbolSize: 18,
+							height: 35,
+							width: 35,
+							symbolSize: 17,
 							symbolX: 18,
 							symbolY: 18,
 							symbol: 'url(img/plot_table.png)',
@@ -425,10 +301,10 @@
 								'class': "tableButtonClass",
 								'state': 'disabled'
 							}
-						},
+						},*/
 
 						numericButton: {
-							x: -84,
+							x: -42,
 							_titleKey: 'numericButtonTitle',
 							height: 36,
 							width: 36,
@@ -463,7 +339,7 @@
 				tooltip: {
 					useHTML: true,
 					shared: false,
-					formatter: function() {
+					/*formatter: function() {
 		                return '<em>'+ this.point.category + '</em><br/>' +
 								'<span style="color:'+ this.series.color +';font-weight:bold">' + this.series.name + '</span><br/>' +
 								'N: ' + this.point.n + '<br/>' +
@@ -477,7 +353,7 @@
 					shadow: false,
 					positioner: function (labelWidth, labelHeight, point) {
 		            	return { x: point.plotX + 20, y: (point.plotY + 10) };
-		            },
+		            },*/
 					style: {
 								color: '#333333',
 								fontSize: '11px',
@@ -486,42 +362,17 @@
 				},
 
 				plotOptions: {
-					boxplot: {
-						stemWidth: 1.2,
-						whiskerWidth: 1,
-						whiskerLength: "100%",
-						point: {
-							events: {
-								mouseOver: function(event) {
-									var pointHandle = $(this)[0];
-									var measurement = pointHandle.category;
-									var type = pointHandle.typeShort;
-									
-									//iterate over the chart data and see if there is any chart corresponding to this entry
-									var chartURL = "";
-									for (var i = 0; i < jsonChartData.data.length; i++)
-									{
-										var dataMap = jsonChartData.data[i];
-										if ((dataMap["Measurement"] == measurement) && (dataMap["Type Short"] == type))
-										{
-											chartURL = dataMap["Chart"];
-										}	
-									}
-									
-									alert(measurement + " " + type + " url:" + chartURL);
-									//$report.html('Moused over').css('color', 'green');
-								}
-							}
-						}
-					},
 					series: {
 						dataLabels: {
 							enabled: true,
 							color: '#444444'
 						},
-						pointPadding: 0.30,
-						groupPadding: 0.05,
-						pointWidth: 15
+						pointPadding: 0.20,
+						groupPadding: 0.15
+					},
+					column: {
+						borderWidth: 1,
+						borderColor: BORDER_COLOR
 					}
 				},
 
@@ -545,17 +396,14 @@
 				xAxis: {
 					categories: filteredCategories,
 					title: {
-						text: 'Experiment.'
+						text: 'Measurement'
 					}
 				},
 
 				yAxis: {
 					title: {
-						text: 'Score'
-					},
-					endOnTick: false,
-					tickPosition: 'inside',
-					max: maxValue + ((maxValue - minValue)/3.6)
+						text: 'Mean'
+					}
 				},
 
 				series: filteredSeries
@@ -567,50 +415,12 @@
 					/*
 					* All adjustments on top of highcharts
 					*/
-					//adjust the fill color based on the stroke (default options supports only one fillcolor across plots)
-					/*$("g.highcharts-series").find("path[fill=" + FILL_COLOR + "]").each(function(){
-						//get the stroke color and remove the # character from the color definition
-						var strokeColor = $(this).attr("stroke").substring(1);
-						var fillColor = (new Hex(strokeColor)).brightness(20);
-						$(this).attr("fill", "#" + fillColor);
-						$(this).attr("stroke", BORDER_COLOR);
-					});*/
-
-					//draw triangle in plot
-					drawTriangleInPlot();
-
-					//Add click event on the ledgend so that the numbers can be re-rendered when ledgend is clicked
-					$(".highcharts-legend").click(function(){setTimeout(drawTriangleInPlot,400);drawNumbersInPlot();});
 
 					//create tabular data and append it to the plot
 					//drawTableInPlot();
 
 					//Adding numbers in the plot
 					drawNumbersInPlot();
-
-					//Add click event on the ledgend so that the numbers can be re-rendered when ledgend is clicked
-					$(".highcharts-legend").click(function(){drawNumbersInPlot();});
-
-					//To fix the cases when the min value coincides with x-axis
-					var yMaxPos = 0;
-					$("g.highcharts-series-group").find("path[stroke=" + WHISKER_COLOR + "]").each(function(index){
-						var pos = $(this).attr("d").split(" ");
-						var yPos = parseInt(pos[pos.length - 1]);
-
-						if (yMaxPos < yPos){
-						    yMaxPos = yPos;
-							pathHandle = $(this);
-						}
-					});
-
-					$("g.highcharts-series-group").find("path[stroke=" + WHISKER_COLOR + "]").each(function(index){
-						var pos = $(this).attr("d").split(" ");
-						if (pos[pos.length - 1] == yMaxPos){
-							pos[pos.length - 1] = yMaxPos - 2;
-							pos[pos.length - 4] = yMaxPos - 2;
-						}
-						$(this).attr("d",pos.join(" "));
-					});
 				}
 			);
 		}
@@ -656,14 +466,14 @@
 	<script src="js/colorutils.min.js"></script>
 	<div class="container">
 		<div class="row">
-			<span class="span10 offset1 hero-unit"><h4 class="text-center">Comparison of Mean between: variable, variable and variables</h4></span>
+			<span class="span10 offset1 hero-unit"><h4 class="text-center">Average per Session</h4></span>
 		</div>
 		<div class="row">
 			<div class="span12">
 				<div id="filterContainer" style="display:none">
 					<div id="filterButton" style="float:left;margin-right:-80px">
 						<a class="filterLink btn btn-small  btn-info">
-						<i class="icon-filter icon-white"></i> <span style="font-size:13.5px;">Measurement</span></a>
+						<!--<img src="img/filter_data.png" width="25" height="20" style="height: 20px;width: 25px;"/>--> <i class="icon-filter icon-white"></i> <span style="font-size:13.5px;">Measurement</span></a>
 					</div>
 					<div style="clear:both;"></div>
 					<div id="filterDiv" class="control-group inactive">
