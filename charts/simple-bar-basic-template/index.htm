@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Average per Session</title>
+	<link href="../css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+	<script type='text/javascript' src='../js/jquery-1.9.1.js'></script>
+	<style type='text/css'>
+		body {
+			font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
+			color: #274b6d;
+			padding-top: 25px;
+		}
+
+		.hero-unit {
+			padding: 0px 30px;
+			margin-bottom: 20px;
+		}
+
+		.form-horizontal .control-group {
+			margin-bottom: 10px;
+		}
+
+		.table {
+			margin-bottom: 0px;
+		}
+
+		.table-condensed td {
+			padding: 0px 5px;
+			line-height: 15px;
+			opacity: 1;
+			background-color: #FFFFFF;
+			white-space: nowrap;
+		}
+
+		.label, .badge {
+			font-weight: normal;
+			font-size: 11px;
+			margin-bottom: 4px;
+			display: block;
+		}
+
+		#dataTable {
+			position:absolute;
+			left:95px;
+			top:19px;
+			font-size:9px;
+			border: 1px solid #999999;
+			border-radius: 5px;
+		}
+		
+		/*For Freezing the first column and add scroll bar*/
+		#dataTable > div {
+			width: 400px;
+			overflow-x: scroll;
+			overflow-y: hidden;
+		}
+
+		.freezeColumn {
+			position:absolute; 
+            width:5em; 
+            left:0;
+            top:auto;
+            border-right: 0px none black; 
+			background-color: #49afcd !important;
+			color: #ffffff;
+		}
+		
+		@media (min-height: 620px) {
+			body {
+				padding-top: 25px;
+			}
+			
+			.hero-unit {
+				padding: 0px 30px;
+				margin-bottom: 20px;
+			}
+
+			.hero-unit.side-panel-title{
+				font-size: 13px;
+				margin-bottom:10px;
+			}
+
+			.label, .badge {
+				font-size: 11px;
+				margin-bottom: 1px;
+			}
+			
+			#plotContainer{
+				height:550px;
+			}
+			
+			#closeGraph{
+				margin-right:-20px;
+			}
+			
+			#chartContainer {
+				height: 350px;
+			}
+		}
+		
+		@media (max-height: 700px) {
+			body {
+				padding: 0px;
+			}
+		}
+		
+		@media (max-height: 620px) {
+			body {
+				padding: 0px;
+			}
+			
+			.hero-unit {
+				padding: 0px 20px;
+				margin-bottom: 10px;
+			}
+
+			.hero-unit.side-panel-title{
+				font-size: 11px;
+				margin-bottom:5px;
+				line-height: 25px;
+				padding-right:15px;
+			}
+			
+			h4 {
+				font-size: 13px;
+				line-height: 13px;
+			}
+			
+			.label, .badge {
+				font-size: 10px;
+				margin-bottom: 1px;
+				padding: 1px 3px;
+			}
+			
+			#plotContainer{
+				height:475px;
+			}
+			
+			#closeGraph{
+				margin-right:-15px;
+			}
+			
+			#chartContainer {
+				height: 300px;
+			}
+		}
+		
+	</style>
+	<script type='text/javascript' src='simple-bar-json-r.js'></script>
+	<script type='text/javascript'>
+
+		var tableColumnData = ["Measurement", "Type Short"];
+		var tableRowHeader = ["Mean", "SD", "Lower CI", "Upper CI", "P Value"];
+
+		var BORDER_COLOR = "#444444";
+
+		//variable to hold the chart's handle
+		var myChart = null;
+		var chartHandle = null;
+
+		//function to change the filter panels dynamically based on the json data
+		function initializeFilterPanel() {
+			var distinctCategories = {};
+			for (var i = 0; i < jsonData.data.length; i++){
+				var dataMap = jsonData.data[i];
+				var categoryGroup = dataMap["Measurement"];
+				distinctCategories[categoryGroup] = 1;
+			}
+
+			//create the filter checkboxes as per the categories
+			for (var key in distinctCategories) {
+				$("#filterList").append('<label class="filterItem block label label-success active">' + key + '</label>');
+			}
+		}
+
+		//Function to remove table from the plot
+		function removeTableFromPlot() {
+			$("#dataTable").remove();
+		}
+
+		//Function to draw table in the plot
+		function drawTableInPlot() {
+
+			//remove existing table and draw the table
+			removeTableFromPlot()
+ 
+			var tableStr = '<div id="dataTable"><div>';
+			tableStr += '<table class="table table-hover table-condensed table-striped">';
+
+			var tabularData = [];
+
+			//add column header row
+			var columnHeader = ["&nbsp;"];
+			for (var i = 0; i < jsonData.data.length; i++){
+				var dataMap = jsonData.data[i];
+				var header = "";
+				for (var j = 0; j < tableColumnData.length; j++){
+					header = header + " " + dataMap[tableColumnData[j]];
+				}
+				columnHeader.push($.trim(header));
+			}
+			tabularData.push(columnHeader);
+
+			for (var k = 0; k < tableRowHeader.length; k++){
+				var tableRow = [];
+				tableRow.push($.trim(tableRowHeader[k]));
+				
+				for (var j = 0; j < jsonData.data.length; j++){
+					var dataMap = jsonData.data[j];
+					tableRow.push(dataMap[tableRowHeader[k]]);
+				}
+				tabularData.push(tableRow);
+			}
+
+			for (var i = 0; i < tabularData.length; i++){
+				tableStr += "<tr>";
+				var dataArray = tabularData[i];
+				for (var j = 0; j < dataArray.length; j++)
+					if (j == 0)
+						tableStr += "<td class='freezeColumn'>" + dataArray[j] + "</td><td style='padding-right:50px;'>&nbsp;</td>";
+					else
+						tableStr += "<td>" + dataArray[j] + "</td>";
+					tableStr += "</tr>";
+			}
+
+			tableStr += "</table></div></div>";
+			//$("#tableContainer").append(tableStr);
+			$("div.highcharts-legend").parent().append(tableStr);
+			$("div.highcharts-tooltip > span").css({'opacity':1, 'background-color':"#FFFFFF","z-index":100});
+		}
+
+		//Function to remove the numbers in plot
+		function removeNumbersFromPlot() {
+			for (var i = 0; i < myChart.series.length; i++)
+			{
+				myChart.series[i].update({
+					dataLabels: {enabled:false}
+				});
+			}
+		}
+
+		//Function to plot the numbers in the plot
+		function drawNumbersInPlot() {
+
+			for (var i = 0; i < myChart.series.length; i++)
+			{
+				myChart.series[i].update({
+					dataLabels: {enabled:true}
+				});
+			}
+		}
+
+		//function to initialize the filter panel
+		function createFilterPanel(){
+			var filterDivWidth = (0 - $("#filterDiv").width()-35) + "px";
+			$("#filterDiv").css("margin-left",filterDivWidth);
+			$('.filterLink').bind("click", function () {
+					if ($(".filterLink").hasClass("active")) {
+						$(".filterLink").removeClass("active").addClass("inactive");
+						$("#filterDiv").stop().animate({'marginLeft':filterDivWidth},200);
+					} else {
+						$(".filterLink").addClass("active").removeClass("inactive");
+						$("#filterDiv").stop().animate({'marginLeft':'-2px'},200);
+					}
+				});
+			$(".filterItem").hover(function(){$(this).stop().animate({'marginLeft':'5px'},200);},function(){$(this).stop().animate({'marginLeft':'0px'},200);});
+			$("#filterContainer").css({"top":$("#plotContainer").offset().top + 21, "left":0, "z-index":99, "position":"absolute"}).show();
+		}
+
+		//function to draw the plot based on the filter conditions
+		function drawPlot() {
+
+			//destroy the existing chart if any
+			if (chartHandle != null)
+				chartHandle.destroy();
+
+			var selectedGroups = [];
+			var index = 0;
+			$("label.filterItem.active").each(function(){
+						selectedGroups[index] = $(this).html();
+						index++;
+					});
+			//alert(selectedGroups);
+
+			var filteredCategories = selectedGroups;
+			var filteredJsonData = [];
+			var dataGroups = {};
+			var maxValue = 0;
+			var minValue = 0;
+
+			for (var j = 0; j < filteredCategories.length; j++){
+
+				for (var i = 0; i < jsonData.data.length; i++){
+					var dataMap = jsonData.data[i];
+					var categoryGroup = dataMap["Measurement"];
+
+					if (filteredCategories[j] == categoryGroup) {
+						var dataGroup = dataMap["Type"];
+
+						if (dataGroups[dataGroup] == null){
+							dataGroups[dataGroup] = [];
+						}
+
+						/*var dataArray = {};
+						dataArray["low"] = parseFloat(dataMap["Lower CI"]);
+						dataArray["q1"] = parseFloat(dataMap["Mean"]);
+						dataArray["median"] = parseFloat(dataMap["Mean"]);
+						dataArray["q3"] = parseFloat(dataMap["Mean"]);
+						dataArray["high"] = parseFloat(dataMap["Upper CI"]);
+						dataArray["sd"] = parseFloat(dataMap["SD"]);
+						dataArray["pValue"] = parseFloat(dataMap["P Value"]);
+						dataArray["n"] = parseFloat(dataMap["N"]);
+						dataArray["se"] = parseFloat(dataMap["SE of Mean"]);*/
+
+						dataGroups[dataGroup].push(parseFloat(dataMap["Mean"]));
+						filteredJsonData.push(dataMap);
+					}
+				}
+			}
+			//alert(dataGroups);
+
+			var filteredSeries = [];
+			for (var key in dataGroups) {
+				var seriesMap = {};
+				seriesMap["name"] = key;
+				seriesMap["data"] = dataGroups[key];
+				filteredSeries.push(seriesMap);
+			}
+
+			chartHandle = new Highcharts.Chart({
+
+				chart: {
+					renderTo: $('#plotContainer')[0],
+					type: 'column',
+					marginTop: 60,
+					marginLeft: 120
+				},
+
+				exporting: {
+					buttons: {
+						contextButton: {
+							height: 36,
+							width: 36,
+							symbol: 'url(../img/plot_print.png)',
+							symbolSize: 18,
+							symbolX: 18,
+							symbolY: 18
+						},
+
+						/*tableButton: {
+							x: -42,
+							_titleKey: 'tableButtonTitle',
+							height: 35,
+							width: 35,
+							symbolSize: 17,
+							symbolX: 18,
+							symbolY: 18,
+							symbol: 'url(img/plot_table.png)',
+							onclick: function () {
+								if ($('g.tableButtonClass').attr("state") == "disabled") {
+									drawTableInPlot();
+									$('g.tableButtonClass').attr("state","enabled");
+								}
+								else {
+									removeTableFromPlot();
+									$('g.tableButtonClass').attr("state", "disabled");
+								}
+							},
+							theme: {
+								'class': "tableButtonClass",
+								'state': 'disabled'
+							}
+						},*/
+
+						numericButton: {
+							x: -42,
+							_titleKey: 'numericButtonTitle',
+							height: 36,
+							width: 36,
+							symbolSize: 18,
+							symbolX: 18,
+							symbolY: 18,
+							symbol: 'url(../img/plot_numbering.png)',
+							onclick: function () {
+								if ($('g.numericButtonClass').attr("state") == "disabled") {
+									drawNumbersInPlot();
+									$('g.numericButtonClass').attr("state","enabled");
+								}
+								else {
+									removeNumbersFromPlot();
+									$('g.numericButtonClass').attr("state", "disabled");
+								}
+							},
+							theme: {
+								'class': "numericButtonClass",
+								'state': 'enabled'
+							}
+						}
+					}
+				},
+
+				legend: {
+					useHTML: true,
+					enabled: true,
+					borderWidth: 0
+				},
+
+				tooltip: {
+					useHTML: true,
+					shared: false,
+					/*formatter: function() {
+		                return '<em>'+ this.point.category + '</em><br/>' +
+								'<span style="color:'+ this.series.color +';font-weight:bold">' + this.series.name + '</span><br/>' +
+								'N: ' + this.point.n + '<br/>' +
+								'Mean: ' + this.point.median + '<br/>' +
+								'SD: ' + this.point.sd + '<br/>' +
+								'SE: ' + this.point.se + '<br/>' +
+								'Lower CI: ' + this.point.low + '<br/>' +
+								'Upper CI: ' + this.point.high + '<br/>' +
+								'P Value: ' + this.point.pValue + '<br/>';
+		            },
+					shadow: false,
+					positioner: function (labelWidth, labelHeight, point) {
+		            	return { x: point.plotX + 20, y: (point.plotY + 10) };
+		            },*/
+					style: {
+								color: '#333333',
+								fontSize: '11px',
+								padding: '5px'
+					}
+				},
+
+				plotOptions: {
+					series: {
+						dataLabels: {
+							enabled: true,
+							color: '#444444'
+						},
+						pointPadding: 0.20,
+						groupPadding: 0.15
+					},
+					column: {
+						borderWidth: 1,
+						borderColor: BORDER_COLOR
+					}
+				},
+
+				colors: [
+					'#FF5E42',
+					'#51B0FF',
+					'#FE8D00',
+					'#910000',
+					'#1aadce',
+					'#492970',
+					'#f28f43',
+					'#77a1e5',
+					'#c42525',
+					'#a6c96a'
+				],
+
+				title: {
+					text: ''
+				},
+
+				xAxis: {
+					categories: filteredCategories,
+					title: {
+						text: 'Measurement'
+					}
+				},
+
+				yAxis: {
+					title: {
+						text: 'Mean'
+					}
+				},
+
+				series: filteredSeries
+			},
+			function(chart) { // on complete
+
+					myChart = chart;
+
+					/*
+					* All adjustments on top of highcharts
+					*/
+
+					//create tabular data and append it to the plot
+					//drawTableInPlot();
+
+					//Adding numbers in the plot
+					drawNumbersInPlot();
+				}
+			);
+		}
+
+		$(document).ready(function(){
+
+				//Initialize the filters in the panel
+				initializeFilterPanel();
+
+				//set the titles for the additional buttons
+				Highcharts.setOptions({
+				    lang: {
+				        numericButtonTitle: "Add/Remove Labels",
+						tableButtonTitle: "Add/Remove Table"
+				    }
+				});
+
+				//Create the chart based on the filters
+				$("label.filterItem").bind('click', function () {
+
+					if ($(this).hasClass("active"))
+						$(this).removeClass("active").removeClass("label-success")
+					else
+						$(this).addClass("active").addClass("label-success")
+					drawPlot();
+				});
+
+				//draw the plot by default
+				drawPlot();
+
+				//set the filter panel co-ordinates & bind events to it
+				setTimeout(createFilterPanel,200);
+			}
+		);
+</script>
+
+</head>
+<body>
+	<script src="../js/highcharts.js"></script>
+	<script src="../js/highcharts-more.js"></script>
+	<script src="../js/exporting.js"></script>
+	<script src="../js/bootstrap.min.js"></script>
+	<script src="../js/colorutils.min.js"></script>
+	<div class="container">
+		<div class="row">
+			<span class="span7 offset2 hero-unit"><h4 class="text-center">Average per Session</h4></span>
+		</div>
+		<div class="row">
+			<div id="leftPanel" class="span2" style="margin-left:0px;">
+				<div class="hero-unit side-panel-title">Measurements</div>
+				<div id="filterList"></div>
+				<div id="chartTitle" class="hero-unit side-panel-title" style="margin-top:10px;margin-bottom:0px;display:none">Normality Graph 
+					<span id="closeGraph" class="pull-right">X</span>
+				</div>
+				<img id="chartContainer" src="" style="display:none;"/>
+			</div>
+			<div id="mainPanel" class="span8">
+				<div id="plotContainer" style="margin: auto; min-width: 450px; max-width: 1200px"></div>
+			</div>
+		</div>
+	</div>
+ </body>
+</html>
+
