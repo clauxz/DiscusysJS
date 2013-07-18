@@ -6,44 +6,38 @@
 	<title>System Usability Scale</title>
 	<script type='text/javascript' src='//code.jquery.com/jquery-1.9.1.js'></script>
 	<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
-	<link href="css/bootstrap-responsive.min.css" rel="stylesheet" type="text/css"/>
+	<!--<link href="css/bootstrap-responsive.min.css" rel="stylesheet" type="text/css"/>-->
 	<style type='text/css'>
 		body {
 			font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
 			color: #274b6d;
 			padding-top: 25px;
 		}
-		
-		.hero-unit {
-			padding: 0px 30px;
-			margin-bottom: 20px;
-		}
-		
+
 		.form-horizontal .control-group {
 			margin-bottom: 10px;
 		}
-		
+
 		.table {
 			margin-bottom: 0px;
 		}
-		
+
 		.table-condensed td {
-			padding: 0px 6px;
-			line-height: 15px;
+			padding: 0px 5px;
+			line-height: 13px;
 			opacity: 1;
 			background-color: #FFFFFF;
+			white-space: nowrap;
 		}
-		
+
 		.label, .badge {
 			font-weight: normal;
-			font-size: 11px;
-			margin-bottom: 4px;
 			display: block;
 		}
 		
 		#dataTable {
 			position:absolute;
-			left:95px;
+			left:39px;
 			top:15px;
 			font-size:9px;
 			border: 1px solid #999999;
@@ -56,7 +50,101 @@
 			border:1px solid #3a87ad;
 			border-radius:5px;
 			color:#555555;
-			width:125px;
+			width:190px;
+		}
+
+		#filterList {
+			overflow-y: auto;
+		}
+
+		#closeGraph{
+			color:#555555;
+			cursor:pointer;
+		}
+		
+		#closeGraph:hover{
+			color:#222222;
+			font-weight:bold;
+		}
+		
+		@media (min-height: 620px) {
+			body {
+				padding-top: 25px;
+			}
+			
+			.hero-unit {
+				padding: 0px 30px;
+				margin-bottom: 20px;
+			}
+
+			.hero-unit.side-panel-title{
+				font-size: 13px;
+				margin-bottom:10px;
+			}
+
+			.label, .badge {
+				font-size: 11px;
+				margin-bottom: 1px;
+			}
+			
+			#plotContainer{
+				height:550px;
+			}
+			
+			#closeGraph{
+				margin-right:-20px;
+			}
+			
+			#chartContainer {
+				height: 350px;
+			}
+		}
+		
+		@media (max-height: 700px) {
+			body {
+				padding: 0px;
+			}
+		}
+		
+		@media (max-height: 620px) {
+			body {
+				padding: 0px;
+			}
+			
+			.hero-unit {
+				padding: 0px 20px;
+				margin-bottom: 10px;
+			}
+
+			.hero-unit.side-panel-title{
+				font-size: 11px;
+				margin-bottom:5px;
+				line-height: 25px;
+				padding-right:15px;
+			}
+			
+			h4 {
+				font-size: 13px;
+				line-height: 13px;
+			}
+			
+			.label, .badge {
+				font-size: 10px;
+				margin-bottom: 1px;
+				padding: 1px 3px;
+			}
+			
+			#plotContainer{
+				height:475px;
+			}
+			
+			#closeGraph{
+				margin-right:-15px;
+			}
+			
+			#chartContainer {
+				height: 300px;
+			}
 		}
 	</style>
 	<script type='text/javascript' src='box-plot-json-r.js'></script>
@@ -86,7 +174,8 @@
 			
 			//create the filter checkboxes as per the categories
 			for (var key in distinctCategories) {
-				$("#filterDiv").append('<label class="filterItem block label label-success active">' + key + '</label>');
+				//$("#filterDiv").append('<label class="filterItem block label label-success active">' + key + '</label>');
+				$("#filterList").append('<label class="filterItem block label label-success active">' + key + '</label>');
 			}
 		}
 		
@@ -353,8 +442,7 @@
 				chart: {
 					renderTo: $('#plotContainer')[0],
 					type: 'boxplot',
-					marginTop: 140,
-					marginLeft: 120,
+					marginTop: 100,
 					events: {
 						click: function(event) {
 							//alert('x: '+ event.xAxis[0].value + ', y: ' + event.yAxis[0].value + ' x=' + event.offsetX + ' y=' + event.offsetY);
@@ -455,7 +543,7 @@
 								'P Value: ' + this.point.pValue + '<br/>';
 		            },
 					positioner: function (labelWidth, labelHeight, point) {
-		            	return { x: point.plotX + 20, y: (point.plotY + 10) };
+		            	return { x: point.plotX + 20, y: (point.plotY + 80) };
 		            },
 					style: {
 								color: '#333333',
@@ -627,21 +715,19 @@
 	<script src="js/colorutils.min.js"></script>
 	<div class="container">
 		<div class="row">
-			<span class="span10 offset1 hero-unit"><h4 class="text-center">System Usability Scale</h4></span>
+			<span class="span7 offset2 hero-unit"><h4 class="text-center">System Usability Scale</h4></span>
 		</div>
 		<div class="row">
-			<div class="span12">
-				<div id="filterContainer" style="display:none">
-					<div id="filterButton" style="float:left;margin-right:-80px">
-						<a class="filterLink btn btn-small  btn-info">
-						<!--<img src="img/filter_data.png" width="25" height="20" style="height: 20px;width: 25px;"/>--> <i class="icon-filter icon-white"></i> <span style="font-size:13.5px;">Measurement</span></a>
-					</div>
-					<div style="clear:both;"></div>
-					<div id="filterDiv" class="control-group inactive">
-					</div>
+			<div id="leftPanel" class="span2" style="margin-left:0px;">
+				<div class="hero-unit side-panel-title">Measurements</div>
+				<div id="filterList"></div>
+				<div id="chartTitle" class="hero-unit side-panel-title" style="margin-top:10px;margin-bottom:0px;display:none">Normality Graph 
+					<span id="closeGraph" class="pull-right">X</span>
 				</div>
-				<div id="plotContainer" style="height: 550px; margin: auto; min-width: 450px; max-width: 1200px">
-				</div>
+				<img id="chartContainer" src="" style="display:none;"/>
+			</div>
+			<div id="mainPanel" class="span8">
+				<div id="plotContainer" style="margin: auto; min-width: 450px; max-width: 1200px"></div>
 			</div>
 		</div>
 	</div>
