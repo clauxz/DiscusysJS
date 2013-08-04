@@ -6,6 +6,9 @@
 	<title>Comparing Means using Error Bar</title>
 	<link href="../css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
 	<script type='text/javascript' src='../js/jquery-1.9.1.js'></script>
+
+		<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
 	<style type='text/css'>
 		body {
 			font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
@@ -176,6 +179,12 @@
 		var BORDER_COLOR = "#444444";
 		var WHISKER_COLOR = "#777777";
 
+
+		//tooltip for normality graph
+		/*The tooltip in normality graph should display Skewness, Kurtosis, Shapiro Wilk - W and P value, KS D and P Value*/
+		var keyRowForNormality = ["Skewness", "Kurtosis", "KS Test D", "KS Test P Value"];
+		var valueForNormality = [];
+		
 		//variable to hold the chart's handle
 		var myChart = null;
 		var chartHandle = null;
@@ -387,7 +396,7 @@
 				$("#filterList").css("width","99%");
 			});
 		}
-		
+
 		//function to load the chart for given measurement & typeShort
 		function loadChart(measurement, typeShort){
 			//iterate over the chart data and see if there is any chart corresponding to this entry
@@ -395,9 +404,17 @@
 			for (var i = 0; i < jsonChartData.data.length; i++)
 			{
 				var dataMap = jsonChartData.data[i];
+				var data = jsonData.data[i];
+
 				if ((dataMap["Measurement"] == measurement) && (dataMap["Type Short"] == typeShort))
 				{
 					chartURL = dataMap["Chart"];
+
+
+					for (var j=0; j<4; j++ )
+					{
+						valueForNormality[j] = data[keyRowForNormality[j]];
+					}
 				}
 			}
 			// load/hide the chart
@@ -407,6 +424,7 @@
 					$("#chartContainer").show(); 
 					$("#chartTitle").show();
 					$("#filterList").css("width","100%");
+
 				});
 			}
 			else {
@@ -675,7 +693,7 @@
 									var pointHandle = $(this)[0];
 									var measurement = pointHandle.category;
 									var typeShort = pointHandle.typeShort;
-									
+
 									loadChart(measurement, typeShort);
 								}
 							}
@@ -806,7 +824,33 @@
 			//loadChart(optionHandle.attr("measurement"), optionHandle.attr("typeShort"));
 			
 			$("#closeGraph").bind('click',closeGraph);
+
 		});
+
+		function showTooltip(title, desc)
+		{
+			$("#tooltip").css("display", "block");		
+			$("#tooltip").css("position", 'absolute');
+			$("#tooltip").css("width", '140');
+			$("#tooltip").css("backgroundColor", '#EFFCF0');
+			$("#tooltip").css("border", 'dashed 1px black');
+			$("#tooltip").css("padding", '10px');
+			$("#tooltip").css("left", "10%");
+			$("#tooltip").css("top", "60%");
+
+			var str = "";
+			for (var i=0;i<4 ; i++)
+			{
+				str += keyRowForNormality[i] + ":" + valueForNormality[i] + "<br>";
+			}						
+
+			$("#tooltip").html('<div style="padding-left:10; padding-right:5">' + str + '</div>');
+		}
+
+		function hideTooltip()
+		{
+			$("#tooltip").css("display", 'none');
+		}
 </script>
 
 </head>
@@ -827,8 +871,13 @@
 				<div id="chartTitle" class="hero-unit side-panel-title" style="margin-top:10px;margin-bottom:0px;display:none">Normality Graph 
 					<span id="closeGraph" class="pull-right">X</span>
 				</div>
-				<img id="chartContainer" src="" style="display:none;"/>
+				
+				<img  onMouseOut="hideTooltip()" onMouseOver="showTooltip('Tooltip 2', 'This is 2nd tooltip')" id="chartContainer" src="" style="display:none;" />						
+				<div id="tooltip" style="display:none;">					
+				</div>
+				
 			</div>
+
 			<div id="mainPanel" class="span8">
 				<div id="plotContainer" style="margin: auto; min-width: 400px; max-width: 1200px"></div>
 			</div>
