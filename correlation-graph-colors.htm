@@ -56,10 +56,14 @@
 			font-weight: bold;
 			margin-bottom:5px;
 			line-height: 25px;
-			padding-right:15px;
-			width: 80%;
+			width: 70%;
 		}
 		
+		.row svg {
+			display: block;
+			margin: 0 auto;
+		}
+
 		@media (min-height: 620px) {
 			body {
 				padding-top: 25px;
@@ -102,11 +106,11 @@
 			<span class="span10 hero-unit"><h4 class="text-center">Correlation Coefficient Matrix on Self-Survey Question</h4></span>
 		</div>
 		<div class="row">
-			<div class="span5" id="an_side">
+			<div class="span5" id="an_side" >
 				<div class="hero-unit panel-title text-center span3 offset1">Analog</div>
 				<div id="containerAN"></div>
 			</div>
-			<div class="span5" id="di_side">
+			<div class="span5" id="di_side" >
 				<div class="hero-unit panel-title text-center span3 offset1">Digital</div>
 
 				<div id="containerDI"></div>
@@ -154,10 +158,16 @@
 	</div>
 	
 </body>
-<script src="correlation-graph-json-r.js"></script>
+
+<script src="Post-Survey-Performance-Json-Codes-for-Correlation.js"></script>
+<!-- script src="correlation-graph-json-r.js"></script-->
+
 <script type="text/javascript">
 var tipArray = new Array();
 var svgArray = new Array();
+
+var DI_JsonData , AN_JsonData;
+
 function drawChart(graphJsonData, id, width, height)
 {
 	var margin = {top: 130, right: 70, bottom: 40, left: 115};
@@ -368,14 +378,16 @@ function drawChart(graphJsonData, id, width, height)
 	  }, 5000);
 }
 
+	DI_JsonData = jsonData.data;
 	drawChart(jsonData.data,"DI", 400, 400);
 
 </script>
 
 
-<script src="correlation-graph-an-json-r.js"></script>
+<!-- script src="correlation-graph-an-json-r.js"></script-->
 <script type="text/javascript">
 
+	AN_JsonData = jsonData.data;
 	drawChart(jsonData.data, "AN", 400, 400);
 
 function myFunc() {
@@ -383,6 +395,8 @@ function myFunc() {
 	var AN_checked =  $("#an_graph").is(':checked') ? 1 : 0;
 	var width=400, height=400;
 
+	$("#di_side").css("float", "left");
+	$("#an_side").css("float", "left");
 
 	if (DI_checked == 1){
 		$("#di_side").css("display", "block");
@@ -404,18 +418,21 @@ function myFunc() {
 	} else if (DI_checked == 1)
 	{
 		$("#di_side").removeClass("span5").addClass("span12");
+		$("#di_side").css("float", "none");
 
 		width = 550;
 		height = 550;
 	} else if (AN_checked == 1)
 	{
 		$("#an_side").removeClass("span5").addClass("span12");
+		$("#an_side").css("float", "none");
+
 		width = 550;
 		height = 550;
 	}
 
-	drawChart(jsonData.data,"DI", width, height);
-	drawChart(jsonData.data, "AN", width, height);
+	drawChart(DI_JsonData,"DI", width, height);
+	drawChart(AN_JsonData, "AN", width, height);
 }
 
 </script>
