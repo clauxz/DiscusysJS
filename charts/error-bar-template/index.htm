@@ -86,33 +86,20 @@
 			font-weight:bold;
 		}
 
-		
-
-			$("#tooltip").css("position", 'absolute');
-			$("#tooltip").css("width", '140');
-			$("#tooltip").css("backgroundColor", '#EFFCF0');
-			$("#tooltip").css("border", 'dashed 1px black');
-			$("#tooltip").css("padding", '10px');
-			$("#tooltip").css("left", "20%");
-			$("#tooltip").css("top", "60%");
-
-
-
 		#tooltip {
+			display:none;
 			position: absolute;
 			white-space: nowrap;
-			width: 140px;
 			background-color: white;
 			border: 1px solid black;
-			padding: 5px;
+			padding: 4px;
 			left:20%;
-			top:60%
-
-/*			font-family: 'Lucida Grande', 'Lucida Sans Unicode', Verdana, Arial, Helvetica, sans-serif;
+			top:40%;
+			z-index:100;
+			border-radius: 5px;
+			font-family: 'Lucida Grande', 'Lucida Sans Unicode', Verdana, Arial, Helvetica, sans-serif;
 			font-size: 11px;
-			color: rgb(51, 51, 51);
-			left: 5px;
-			top: 5px;*/
+			color: rgb(51, 51, 51);		
 		}
 
 		@media (min-height: 620px) {
@@ -211,7 +198,7 @@
 
 		//tooltip for normality graph
 		/*The tooltip in normality graph should display Skewness, Kurtosis, Shapiro Wilk - W and P value, KS D and P Value*/
-		var keyRowForNormality = ["Skewness", "Kurtosis", "KS Test D", "KS Test P Value"];
+		var keyRowForNormality = ["Type", "Skewness", "Kurtosis", "KS Test D", "KS Test P Value"];
 		var valueForNormality = [];
 		
 		//variable to hold the chart's handle
@@ -440,7 +427,7 @@
 					chartURL = dataMap["Chart"];
 
 
-					for (var j=0; j<4; j++ )
+					for (var j=0; j<5; j++ )
 					{
 						valueForNormality[j] = data[keyRowForNormality[j]];
 					}
@@ -817,6 +804,33 @@
 			);
 		}
 
+		var timeout;
+
+		function hide() {
+			timeout = setTimeout(function () {
+				$("#tooltip").hide('fast');
+			}, 500);
+		};
+
+		function makeTooltip()
+		{					
+			if (valueForNormality[0] == "Analog")
+			{
+				$("#tooltip").css('border-color', '#ff5e42');
+			} else {
+				$("#tooltip").css('border-color', '#51b0ff');
+			}
+	
+			var str = "";
+			for (var i=1;i<5 ; i++)
+			{
+				str += keyRowForNormality[i] + ": " + valueForNormality[i] + "<br>";
+			}						
+			
+			$("#tooltip").html('<div>' + str + '</div>');
+		}
+
+
 		$(document).ready(function(){
 
 			//set the title
@@ -854,26 +868,23 @@
 			
 			$("#closeGraph").bind('click',closeGraph);
 
+
+			$("#chartContainer").mouseover(function () {
+				clearTimeout(timeout);
+				
+				makeTooltip();
+
+				$("#tooltip").stop().show('fast');
+			}).mouseout(hide);
+
+			$("#tooltip").mouseover(function () {
+				clearTimeout(timeout);
+			}).mouseout(hide);
+
+
 		});
-
-		function showTooltip(title, desc)
-		{			
-			$("#tooltip").css("display", "block");		
-
-
-			var str = "";
-			for (var i=0;i<4 ; i++)
-			{
-				str += keyRowForNormality[i] + ":" + valueForNormality[i] + "<br>";
-			}						
-			
-			$("#tooltip").html('<div style="padding-left:10; padding-right:5">' + str + '</div>');
-		}
-
-		function hideTooltip()
-		{
-			$("#tooltip").css("display", 'none');
-		}
+	
+		
 </script>
 
 </head>
@@ -895,9 +906,8 @@
 					<span id="closeGraph" class="pull-right">X</span>
 				</div>
 				
-				<img  onMouseOut="hideTooltip()" onMouseOver="showTooltip('Tooltip 2', 'This is 2nd tooltip')" id="chartContainer" src="" style="display:none;" />						
-				<div id="tooltip" style="display:none;">					
-				</div>
+				<img id="chartContainer" src="" style="display:none;" />						
+				<div id="tooltip"></div>
 				
 			</div>
 
