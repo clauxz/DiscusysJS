@@ -85,7 +85,36 @@
 			color:#222222;
 			font-weight:bold;
 		}
+
 		
+
+			$("#tooltip").css("position", 'absolute');
+			$("#tooltip").css("width", '140');
+			$("#tooltip").css("backgroundColor", '#EFFCF0');
+			$("#tooltip").css("border", 'dashed 1px black');
+			$("#tooltip").css("padding", '10px');
+			$("#tooltip").css("left", "20%");
+			$("#tooltip").css("top", "60%");
+
+
+
+		#tooltip {
+			position: absolute;
+			white-space: nowrap;
+			width: 140px;
+			background-color: white;
+			border: 1px solid black;
+			padding: 5px;
+			left:20%;
+			top:60%
+
+/*			font-family: 'Lucida Grande', 'Lucida Sans Unicode', Verdana, Arial, Helvetica, sans-serif;
+			font-size: 11px;
+			color: rgb(51, 51, 51);
+			left: 5px;
+			top: 5px;*/
+		}
+
 		@media (min-height: 620px) {
 			body {
 				padding-top: 25px;
@@ -828,22 +857,16 @@
 		});
 
 		function showTooltip(title, desc)
-		{
+		{			
 			$("#tooltip").css("display", "block");		
-			$("#tooltip").css("position", 'absolute');
-			$("#tooltip").css("width", '140');
-			$("#tooltip").css("backgroundColor", '#EFFCF0');
-			$("#tooltip").css("border", 'dashed 1px black');
-			$("#tooltip").css("padding", '10px');
-			$("#tooltip").css("left", "10%");
-			$("#tooltip").css("top", "60%");
+
 
 			var str = "";
 			for (var i=0;i<4 ; i++)
 			{
 				str += keyRowForNormality[i] + ":" + valueForNormality[i] + "<br>";
 			}						
-
+			
 			$("#tooltip").html('<div style="padding-left:10; padding-right:5">' + str + '</div>');
 		}
 
