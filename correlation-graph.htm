@@ -18,7 +18,7 @@
 		}
 		
 		text {
-			font-size:11px;
+			font-size:10px;
 		}
 		
 		/*for tooltip*/
@@ -46,7 +46,7 @@
 
 		/* Style northward tooltips differently */
 		.d3-tip.n:after {
-		  margin: -1px 0 0 0;
+		  margin: -2px 0 0 0;
 		  top: 100%;
 		  left: 0;
 		}
@@ -56,9 +56,22 @@
 			font-weight: bold;
 			margin-bottom:5px;
 			line-height: 25px;
-			padding-right:15px;
+			width: 70%;
 		}
 		
+		.row svg {
+			display: block;
+			margin: 0 auto;
+		}
+
+		#selector {
+			text-align: center;
+		}	
+		
+		.checkbox {
+			margin-left:50%;
+		}
+
 		@media (min-height: 620px) {
 			body {
 				padding-top: 25px;
@@ -88,73 +101,122 @@
 				margin-bottom: 10px;
 			}
 		}
-		
+	
 	</style>
+	<script src="js/jquery-1.9.1.js"></script>
 	<script src="http://d3js.org/d3.v2.min.js?2.8.1"></script>
 	<script src="js/d3.tip.min.js"></script>
 </head>
 <body>
 	<div class="container">
+
 		<div class="row">
 			<span class="span10 hero-unit"><h4 class="text-center">Correlation Coefficient Matrix on Self-Survey Question</h4></span>
 		</div>
 		<div class="row">
-			<div class="span5">
-				<div class="hero-unit panel-title text-center span3 offset1" style="color:#FFFFFF; background-color:#ff5E42;">Analog</div>
+			<div class="span5" id="an_side" >
+				<div class="hero-unit panel-title text-center span3 offset1">Analog</div>
 				<div id="containerAN"></div>
-				<div id="selector">
-					Display Order: <select id="orderAN">
-					<option value="-">-</option>
-					<option value="name">by Name</option>
-					<option value="count">by Frequency</option>
-					<option value="group">by Cluster</option>
-					</select>
-				</div>
 			</div>
-			<div class="span5">
-				<div class="hero-unit panel-title text-center span3 offset1" style="color:#FFFFFF; background-color:#51B0FF">Digital</div>
+			<div class="span5" id="di_side" >
+				<div class="hero-unit panel-title text-center span3 offset1">Digital</div>
+
 				<div id="containerDI"></div>
-				<div id="selector">
+				<div id="selector" style="display:none">
 					Display Order: <select id="orderDI">
 					<option value="-">-</option>
 					<option value="name">by Name</option>
-					<option value="count">by Frequency</option>
-					<option value="group">by Cluster</option>
+					<option value="most">by Most Correlated</option>
+					<option value="least">by Least Correlated</option>
 					</select>
 				</div>
 			</div>
 		</div>
-	</div>
-</body>
-<script src="correlation-graph-json-r.js"></script>
-<script type="text/javascript">
-function drawChart(graphJsonData, id)
-{
-	var margin = {top: 80, right: 0, bottom: 10, left: 0},
-	    width = 400,
-	    height = 400;
+		<div class="row">
+			<div class="span12" style="float:none;">
+				<div id="selector">
+					Display Order: <select id="orderAN">
+					<option value="-">-</option>
+					<option value="name">by Name</option>
+					<option value="most">by Most Correlated</option>
+					<option value="least">by Least Correlated</option>
+					</select>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="span12" style="float:none;">
+				<div>
+				  <label style="text-align:center;">
+					<input id="remove_pvalue" type="checkbox" unchecked onclick="RemovePValue()" >
+					Remove p value if it is more than 0.05 
+				  </label>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class= "span5">
+				<div class="checkbox">
+				  <label>
+					<input id="an_graph" type="checkbox" checked onclick="myFunc()">
+					Analog Graph
+				  </label>
+				</div>
+			</div>
+			<div class="span5">
+				<div class="checkbox">
+				  <label>
+					<input id="di_graph" type="checkbox" checked onclick="myFunc()">
+					Digital Graph
+				  </label>
+				</div>
+			</div>			
+		</div>
 
+	</div>
+	
+</body>
+
+<!-- script src="Post-Survey-Performance-Json-Codes-for-Correlation.js"></script -->
+<script src="correlation-graph-json-r.js"></script>
+
+<script type="text/javascript">
+var tipArray = new Array();
+var svgArray = new Array();
+
+var DI_JsonData , AN_JsonData , bRemovePvalue;
+
+function drawChart(graphJsonData, id, width, height)
+{
+	var margin = {top: 130, right: 70, bottom: 40, left: 115};
+	  
 	var x = d3.scale.ordinal().rangeBands([0, width]),
 	    z = d3.scale.linear().domain([0, 4]).clamp(true),
 	    c = d3.scale.category10().domain(d3.range(10));
 
 	var tip = d3.tip()
 	  .attr('class', 'd3-tip')
-	  .html(function(d) { return "Correlation: " + d.v; });
-		
+	  .offset([-6, 0])
+	  .html(function(p) { return "Correlation: " + p.v + "<br/>P Value: " + p.pValue; });
+	
+	tipArray.push(tip);
+
+	$('svg').remove('#' + id);
+
 	var svg = d3.select("#container" + id).append("svg")
 	    .attr("width", width + margin.left + margin.right)
 		.attr("id", id)
 	    .attr("height", height + margin.top + margin.bottom)
-		.style("padding-top", "50px")
+		/*.style("padding-top", "50px")
 		.style("padding-left", "115px")
 		.style("padding-bottom", "50px")
 		.style("padding-right", "50px")
-	    .style("margin-left", margin.left + "px")
+	    .style("margin-left", margin.left + "px")*/
 	    .append("g")
-	    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+	    .attr("transform", "translate(" + margin.top + "," + margin.left + ")")
 		.call(tip);
-
+	svgArray.push(svg);
+		
 	//get the jsondata and transform it
 	var graphData = graphJsonData;
 
@@ -217,8 +279,8 @@ function drawChart(graphJsonData, id)
 	  var orders = {
 	    "-": d3.range(n),
 	    name: d3.range(n).sort(function(a, b) { return d3.ascending(nodes[a].name, nodes[b].name); }),
-	    count: d3.range(n).sort(function(a, b) { return nodes[b].count - nodes[a].count; }),
-	    group: d3.range(n).sort(function(a, b) { return nodes[b].group - nodes[a].group; })
+	    most: d3.range(n).sort(function(a, b) { return nodes[b].count - nodes[a].count; }),
+	    least: d3.range(n).sort(function(a, b) { return nodes[a].count - nodes[b].count; })
 	  };
 
 	  // The default sort order.
@@ -264,7 +326,7 @@ function drawChart(graphJsonData, id)
 	 
 	 d3.selectAll("#container" + id + " .column text").attr("transform", "rotate(45)");
 	 d3.selectAll("#container" + id + " .row text").attr("transform", "rotate(-45)");
-		  
+
 	  function row(row) {
 	    var cell = d3.select(this).selectAll(".cell")
 	        .data(row.filter(function(d) { return d.z; }))
@@ -274,28 +336,41 @@ function drawChart(graphJsonData, id)
 	        .attr("width", x.rangeBand())
 	        .attr("height", x.rangeBand())
 	        //.style("fill-opacity", function(d) { return z(d.z); })
-			.style("fill-opacity", function(d) { return ((d.z <= 0.505) ? 1.01 - 2 *z(4*d.z) : 2 * (z(4*d.z) - 0.505)); })
+			.style("fill-opacity", function(d) { if (d.pValue > 0.05 && bRemovePvalue == 1){ return 1;} else{ return ((d.z <= 0.505) ? 1.01 - 2 *z(4*d.z) : 2 * (z(4*d.z) - 0.505)); } })
 	        //.style("fill", function(d) { return nodes[d.x].group == nodes[d.y].group ? c(nodes[d.x].group) : null; })
-			.style("fill", function(d) { var value = z(d.z);  return (d.z < 0.5) ? "#ee2233" : "#2233ee"; })
+			.style("fill", function(d) { var value = z(d.z); if (d.pValue > 0.05 && bRemovePvalue == 1 ) { return "black";} else { return (d.z < 0.5) ? "#e51223" : "#2299ee"; }  })
 	        .on("mouseover", mouseover)
-	        .on("mouseout", mouseout);
+	        .on("mouseout", mouseout);		
 	  }
 
 	  function mouseover(p) {
 	    d3.selectAll("#"+ id + " .row text").classed("active", function(d, i) { return i == p.y; });
 	    d3.selectAll("#"+ id + " .column text").classed("active", function(d, i) { return i == p.x; });
-		tip.html("Correlation: " + p.v + "<br/>P Value: " + p.pValue);
-		tip.show();
+	
+		for (var i = 0; i < tipArray.length; i++)
+		{
+			tipArray[i].show(p);
+		}
 	  }
 
-	  function mouseout() {
+	  function mouseout(p) {
 	    d3.selectAll("text").classed("active", false);
-		tip.hide();
+		for (var i = 0; i < tipArray.length; i++)
+		{
+			tipArray[i].hide(p);
+		}
 	  }
 
 	  d3.select("#order" + id).on("change", function() {
 	    clearTimeout(timeout);
 	    order(this.value);
+		if (id == "AN")
+		{
+			d3.select("#orderDI").property("selectedIndex", d3.select("#orderAN").property("selectedIndex"));
+			var event = document.createEvent("SVGEvents");
+			event.initEvent("change",true,true);
+			d3.select("#orderDI").node().dispatchEvent(event);
+		}
 	  });
 
 	  function order(value) {
@@ -321,7 +396,8 @@ function drawChart(graphJsonData, id)
 	  }, 5000);
 }
 
-	drawChart(jsonData.data,"DI");
+	DI_JsonData = jsonData.data;
+	drawChart(jsonData.data,"DI", 400, 400);
 
 </script>
 
@@ -329,7 +405,59 @@ function drawChart(graphJsonData, id)
 <script src="correlation-graph-an-json-r.js"></script>
 <script type="text/javascript">
 
-	drawChart(jsonData.data, "AN");
+	AN_JsonData = jsonData.data;
+	drawChart(jsonData.data, "AN", 400, 400);
 
+function myFunc() {
+	var DI_checked =  $("#di_graph").is(':checked') ? 1 : 0;
+	var AN_checked =  $("#an_graph").is(':checked') ? 1 : 0;
+	var width=400, height=400;
+
+	$("#di_side").css("float", "left");
+	$("#an_side").css("float", "left");
+
+	if (DI_checked == 1){
+		$("#di_side").css("display", "block");
+	} else {
+		$("#di_side").css("display", "none");
+	}
+
+	if (AN_checked == 1){
+		$("#an_side").css("display", "block");
+	} else {
+		$("#an_side").css("display", "none");
+	}
+
+
+	if (DI_checked == 1 && AN_checked == 1)
+	{
+		$("#di_side").removeClass("span12").addClass("span5");
+		$("#an_side").removeClass("span12").addClass("span5");		
+	} else if (DI_checked == 1)
+	{
+		$("#di_side").removeClass("span5").addClass("span12");
+		$("#di_side").css("float", "none");
+
+		width = 550;
+		height = 550;
+	} else if (AN_checked == 1)
+	{
+		$("#an_side").removeClass("span5").addClass("span12");
+		$("#an_side").css("float", "none");
+
+		width = 550;
+		height = 550;
+	}
+
+	drawChart(DI_JsonData,"DI", width, height);
+	drawChart(AN_JsonData, "AN", width, height);
+}
+
+
+function RemovePValue()
+{
+	bRemovePvalue =  $("#remove_pvalue").is(':checked') ? 1 : 0;
+	myFunc();
+}
 </script>
 </html>
