@@ -176,10 +176,7 @@
 	</div>
 	
 </body>
-
-<!-- script src="Post-Survey-Performance-Json-Codes-for-Correlation.js"></script -->
-<script src="correlation-graph-json-r.js"></script>
-
+<script src="Post_Survey_Performance_Json_Codes_for_Correlation_DI.js"></script>
 <script type="text/javascript">
 var tipArray = new Array();
 var svgArray = new Array();
@@ -242,7 +239,9 @@ function drawChart(graphJsonData, id, width, height)
 	{
 		var data = graphData[i];
 		var rowHead = data["Row Variable"];
-		var columnHead = data["Column Variable"];
+		//var columnHead = data["Column Variable"];
+		var columnHead = data["Row Variable Type"];
+
 		var correlation = parseFloat(data["Correlation"]);
 		correlation = (correlation + 1.01) / 2.0;
 		
@@ -268,10 +267,8 @@ function drawChart(graphJsonData, id, width, height)
 	    matrix[link.source][link.target].z += link.value;
 		matrix[link.source][link.target].v = link.correlation;
 		matrix[link.source][link.target].pValue = link.pValue;
-	    //matrix[link.target][link.source].z += link.value;
-	    //matrix[link.source][link.source].z += link.value;
-	    //matrix[link.target][link.target].z += link.value;
-	    nodes[link.source].count += link.value;
+
+		nodes[link.source].count += link.value;
 	    nodes[link.target].count += link.value;
 	  });
 
@@ -401,8 +398,7 @@ function drawChart(graphJsonData, id, width, height)
 
 </script>
 
-
-<script src="correlation-graph-an-json-r.js"></script>
+<script src="Post_Survey_Performance_Json_Codes_for_Correlation_AN.js"></script>
 <script type="text/javascript">
 
 	AN_JsonData = jsonData.data;
